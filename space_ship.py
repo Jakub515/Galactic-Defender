@@ -198,6 +198,7 @@ class SpaceShip():
         self.hp = 100        
 
     def destroy_cause_collision(self):
+        return
         if self.is_destroyed: return
         self.is_destroyed = True
         self.explosion_flash = 255
