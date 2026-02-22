@@ -48,11 +48,12 @@ class Game():
         self.radar_obj = radar.Radar(cxx, cyy, 200, self.WORLD_RADIUS)
         self.game_controller = ui.GameController(self.player_shoot, events_obj, self.player, cxx, cyy, loaded_space_frames_full, clock)
         self.paused = False
+        self.dict = None
 
     def pause_or_resume(self):
         self.paused = not self.paused
 
-    def mainloop(self, window: pygame.Surface, dt:float):
+    def mainloop(self, dt:float):
         if self.paused:
             return
         # 2. Logika (Update)
@@ -64,8 +65,8 @@ class Game():
         self.shoot_obj.update()
         
         # Fizyka bariery świata
-        dist = self.player.player_pos.distance_to(self.WORLD_CENTER)
-        if dist > self.WORLD_RADIUS:
+        self.dist = self.player.player_pos.distance_to(self.WORLD_CENTER)
+        if self.dist > self.WORLD_RADIUS:
             self.player.player_pos = self.WORLD_CENTER + (self.player.player_pos - self.WORLD_CENTER).normalize() * self.WORLD_RADIUS
             self.player.velocity *= -0.3
             self.player.destroy_cause_collision()
@@ -77,11 +78,11 @@ class Game():
 
         # 3. Rysowanie (Draw)
         # Tło pociąga pozycję kamery dla efektu paralaksy/przesuwania
-        bg.draw(window, (self.camera.pos.x, self.camera.pos.y))
 
+    def draw(self, window: pygame.Surface):
         # Wizualna bariera świata (używamy camera.apply, aby krąg był na właściwych współrzędnych)
-        if dist > self.WORLD_RADIUS - self.FADE_ZONE:
-            alpha = int(max(0, min(1.0, (dist - (self.WORLD_RADIUS - self.FADE_ZONE)) / self.FADE_ZONE)) * 255)
+        if self.dist > self.WORLD_RADIUS - self.FADE_ZONE:
+            alpha = int(max(0, min(1.0, (self.dist - (self.WORLD_RADIUS - self.FADE_ZONE)) / self.FADE_ZONE)) * 255)
             rel_center = self.camera.apply(self.WORLD_CENTER)
             temp_s = pygame.Surface((cxx, cyy), pygame.SRCALPHA)
             pygame.draw.circle(temp_s, (255, 0, 0, alpha // 4), rel_center, self.WORLD_RADIUS, 500)
@@ -118,11 +119,14 @@ while running:
     
     if current_esc_state and not last_esc_state:
         game_obj.pause_or_resume()
+
+    if events_obj.key_f5:
+        game_obj = Game()
         
     last_esc_state = current_esc_state
-    game_obj.mainloop(window, dt)
-
-    
+    game_obj.mainloop(dt)
+    bg.draw(window, (game_obj.camera.pos.x, game_obj.camera.pos.y))
+    game_obj.draw(window)
     pygame.display.flip()
 
 # Wyjście

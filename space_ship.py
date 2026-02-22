@@ -114,7 +114,7 @@ class Battle():
         if self.switch_cooldown > 0:
             self.switch_cooldown -= dt
 
-        # Obsługa tarczy
+        # Obsługa tarczy            
         if self.shield_active:
             self.shield_angle += 25
             self.shield_timer -= 1
@@ -129,7 +129,7 @@ class Battle():
         if self.want_to_shoot: self._handle_shooting(self.player_main_class.forward_dir)
 
     def draw(self, window:pygame.Surface, draw_x:float, draw_y:float):
-        if self.shield_active:
+        if self.shield_active and not self.player_main_class.hp <= 0:
             s_rot = pygame.transform.rotate(self.shield_frames[(self.shield_timer//3)%3], self.shield_angle)
             s_rot.set_alpha(150)
             window.blit(s_rot, s_rot.get_rect(center=(draw_x, draw_y)))
@@ -198,8 +198,8 @@ class SpaceShip():
         self.hp = 100        
 
     def destroy_cause_collision(self):
-        return
         if self.is_destroyed: return
+        self.hp = 0
         self.is_destroyed = True
         self.explosion_flash = 255
         for _ in range(12):
@@ -227,6 +227,9 @@ class SpaceShip():
         if not self.is_destroyed: self.is_braking = active
 
     def update(self, dt:float):
+        if self.hp <= 0:
+            self.hp = 0
+            self.destroy_cause_collision()
         if self.is_destroyed:
             self.explosion_flash = max(0, self.explosion_flash - 10)
             self.player_pos += self.velocity

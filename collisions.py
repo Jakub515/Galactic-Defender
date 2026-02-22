@@ -124,6 +124,8 @@ class Collision():
             # --- ZMIANA: Ignoruj martwych ---
             if getattr(enemy, 'is_dead', False):
                 continue
+            if getattr(player, 'is_destroyed', True):
+                continue
 
             dist_sq = (player.player_pos - enemy.pos).length_squared()
             if dist_sq < 90**2:
