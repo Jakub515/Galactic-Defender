@@ -60,7 +60,7 @@ class Battle():
         self.shield_max_timer = 250
         self.shield_angle = 0 
         self.shield_cooldown = 0.0
-        self.max_shield_cooldown = 10.0 # 10 sekund ładowania
+        self.max_shield_cooldown = 1.0 # 10 sekund ładowania
 
     def fire(self, active:bool): 
         if not self.player_main_class.is_destroyed: self.want_to_shoot = active
@@ -192,7 +192,7 @@ class SpaceShip():
 
         # NOWE: System przegrzewania boosta
         self.boost_cooldown = 0.0
-        self.max_boost_cooldown = 5.0
+        self.max_boost_cooldown = 50.0
         self.is_boost_ready = True
 
         self.hp = 100        
