@@ -20,9 +20,8 @@ class MusicManager():
             temp_music.play()
 
     def handle_death(self):
-        """Wywołaj to, gdy gracz się rozbije."""
-        # 1. Płynnie wycisz muzykę w tle w ciągu 1.5 sekundy
-        pygame.mixer.music.fadeout(500)
+        # pygame.mixer.music.fadeout(500)
+        pass
         
     def at_exit(self):
         pygame.mixer.stop()

@@ -198,6 +198,7 @@ class Enemy:
                 "dir": self.angle,
                 "is_enemy_shot": True
             })
+            self.music_obj.play("images/audio/sfx_laser2.wav", 0.3)
 
     def draw(self, window: pygame.Surface, camera_x: float, camera_y: float):
         if self.is_dead:

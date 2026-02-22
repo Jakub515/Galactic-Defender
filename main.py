@@ -12,7 +12,7 @@ pygame.font.init()
 
 FPS = 60
 clock = pygame.time.Clock()
-window = pygame.display.set_mode((1920, 1080), pygame.FULLSCREEN)
+window = pygame.display.set_mode((1920, 1080 ), pygame.FULLSCREEN)
 cxx, cyy = window.get_size()
 pygame.display.set_caption("Kosmos")
 
