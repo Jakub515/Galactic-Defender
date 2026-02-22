@@ -33,6 +33,7 @@ camera = Camera(cxx, cyy, lerp_factor=0.08, offset_scalar=15)
 
 bg = SpaceBackground(cxx, cyy, cxx, cyy, 50)
 player = space_ship.SpaceShip(loaded_space_frames, audio_files, cxx, cyy, [0, 0], music_obj, shoot_obj)
+player_shoot = space_ship.Battle(player,loaded_space_frames,audio_files,cxx,cyy,[0,0],music_obj,shoot_obj)
 
 pola_asteroid = [
     {"pos": pygame.math.Vector2(0, 0), "radius": 22000, "count": 250},
@@ -43,7 +44,7 @@ enemy_manager = EnemyManager(loaded_space_frames, player, music_obj, 20, shoot_o
 
 colision_obj = collisions.Collision(music_obj)
 radar_obj = radar.Radar(cxx, cyy, 200, WORLD_RADIUS)
-game_controller = ui.GameController(events_obj, player, cxx, cyy, loaded_space_frames_full, clock)
+game_controller = ui.GameController(player_shoot, events_obj, player, cxx, cyy, loaded_space_frames_full, clock)
 
 # --- D. GŁÓWNA PĘTLA ---
 running = True
@@ -58,6 +59,7 @@ while running:
     # 2. Logika (Update)
     game_controller.update(dt)
     player.update(dt)
+    player_shoot.update(dt)
     enemy_manager.update(dt)
     asteroid_manager.update(dt, player, enemy_manager)
     shoot_obj.update()
@@ -69,7 +71,7 @@ while running:
         player.velocity *= -0.3
         player.destroy_cause_collision()
 
-    colision_obj.check_collisions(player, enemy_manager, shoot_obj, asteroid_manager)
+    colision_obj.check_collisions(player_shoot, player, enemy_manager, shoot_obj, asteroid_manager)
     
     # Aktualizacja kamery
     camera.update(player.player_pos, player.velocity)
@@ -96,6 +98,7 @@ while running:
     # Gracz (pozycja przeliczona przez kamerę)
     p_draw = camera.apply(player.player_pos)
     player.draw(window, p_draw[0], p_draw[1])
+    player_shoot.draw(window, p_draw[0], p_draw[1])
 
     # UI i Radar (na sztywno do ekranu)
     radar_obj.draw(window, player, enemy_manager, asteroid_manager, dt)

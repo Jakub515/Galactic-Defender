@@ -3,14 +3,15 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from space_ship import SpaceShip
+    from space_ship import Battle
     from functions import Event
 
 class GameController:
-    def __init__(self, event_obj: "Event", player: "SpaceShip", cxx: int, cyy: int, loaded_images: dict, clock: pygame.time.Clock):
+    def __init__(self, battle: "Battle", event_obj: "Event", player: "SpaceShip", cxx: int, cyy: int, loaded_images: dict, clock: pygame.time.Clock):
         # Inicjalizujemy UI
         self.ui = UI(event_obj, cxx, cyy, loaded_images)
         # Inicjalizujemy InputHandler i przekazujemy mu obiekt UI
-        self.input_handler = InputHandler(event_obj, player, self.ui)
+        self.input_handler = InputHandler(event_obj, player, battle, self.ui)
         # Przechowujemy referencję do zegara gry
         self.clock = clock
 
@@ -23,10 +24,11 @@ class GameController:
         self.ui.draw(window)
 
 class InputHandler:
-    def __init__(self, event_obj: "Event", player_obj: "SpaceShip", ui_obj: "UI"):
+    def __init__(self, event_obj: "Event", player_obj: "SpaceShip", player_shoot:"Battle", ui_obj: "UI"):
         self.event_obj = event_obj
         self.player_obj = player_obj
         self.ctrl_pressed_last_frame = False
+        self.player_shoot = player_shoot
         self.ui_obj = ui_obj
     
     def update(self):
@@ -46,13 +48,13 @@ class InputHandler:
         self.player_obj.brake(self.event_obj.key_down)
 
         # --- WALKA ---
-        self.player_obj.fire(self.event_obj.key_space)
+        self.player_shoot.fire(self.event_obj.key_space)
 
         if self.event_obj.key_s:
-            self.player_obj.activate_shield()
+            self.player_shoot.activate_shield()
 
         if self.event_obj.key_ctrl_left and not self.ctrl_pressed_last_frame:
-            self.player_obj.switch_weapon_set()
+            self.player_shoot.switch_weapon_set()
             self.ui_obj.change_weapon_type_ctr()
         self.ctrl_pressed_last_frame = self.event_obj.key_ctrl_left
 
@@ -65,7 +67,7 @@ class InputHandler:
         for i, pressed in enumerate(keys_numbers):
             if pressed:
                 self.ui_obj.change_weapon_type_num(i)
-                self.player_obj.select_weapon(i)
+                self.player_shoot.select_weapon(i)
                 break
 
 class UI:

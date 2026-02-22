@@ -6,7 +6,7 @@ if TYPE_CHECKING:
     from music import MusicManager
     from shoot import Shoot
     from asteroids import AsteroidManager
-    from space_ship import SpaceShip
+    from space_ship import SpaceShip, Battle
     from enemy_ship import EnemyManager, Enemy
 
 class Collision():
@@ -35,7 +35,7 @@ class Collision():
 
         return mask1.overlap(mask2, (offset_x, offset_y))
 
-    def check_collisions(self, player: "SpaceShip", enemy_manager: "EnemyManager", shoot_obj: "Shoot", asteroid_manager: "AsteroidManager"):
+    def check_collisions(self, battle: "Battle", player: "SpaceShip", enemy_manager: "EnemyManager", shoot_obj: "Shoot", asteroid_manager: "AsteroidManager"):
         # --- 1. KOLIZJE POCISKÓW ---
         for shot in shoot_obj.shots[:]:
             if shot.get("is_exploding"):
@@ -43,7 +43,7 @@ class Collision():
 
             shot_hit = False
             
-            # Pocisk vs Asteroidy (Prosta kolizja kołowa dla pocisków wystarczy)
+            # Pocisk vs Asteroidy
             for asteroid in asteroid_manager.asteroids:
                 dist_sq = (shot["pos"] - asteroid.pos).length_squared()
                 if dist_sq < asteroid.radius**2:
@@ -54,6 +54,10 @@ class Collision():
             if not shot_hit:
                 if not shot.get("is_enemy_shot", False):
                     for enemy in enemy_manager.enemies[:]:
+                        # --- ZMIANA: Ignoruj martwych ---
+                        if getattr(enemy, 'is_dead', False):
+                            continue
+                            
                         dist_sq = (shot["pos"] - enemy.pos).length_squared()
                         if dist_sq < 60**2:
                             enemy.hp -= shot["damage"]
@@ -61,14 +65,12 @@ class Collision():
                             if enemy.hp <= 0:
                                 if enemy in enemy_manager.enemies:
                                     enemy.death()
-                                    #enemy_manager.enemies.remove(enemy)
-                                    #self.music_obj.play("images/audio/sfx_exp_medium1.wav", 0.2)
                             break 
                 else:
                     dist_sq = (shot["pos"] - player.player_pos).length_squared()
                     if dist_sq < 35**2:
                         shot_hit = True
-                        if not player.shield_active:
+                        if not battle.shield_active:
                             player.hp -= shot["damage"]
                         else:
                             self.music_obj.play("images/audio/kenney_sci-fi-sounds/forceField_001.wav", 0.25)
@@ -84,25 +86,25 @@ class Collision():
                     if shot in shoot_obj.shots:
                         shoot_obj.shots.remove(shot)
 
-        # --- 2. KOLIZJE STATKÓW Z ASTEROIDAMI (CIRCLE + MASK) ---
-        
+        # --- 2. KOLIZJE STATKÓW Z ASTEROIDAMI ---
         # A. Gracz vs Asteroidy
         for asteroid in asteroid_manager.asteroids:
             dist_sq = (player.player_pos - asteroid.pos).length_squared()
-            # Wstępne sprawdzenie promienia (promień gracza 35 + promień asteroidy)
             if dist_sq < (35 + asteroid.radius)**2:
-                # Precyzyjne sprawdzenie maski (uwzględnia alpha i obrót obydwu obiektów)
                 hit = self.check_mask_collision(
                     player.actual_frame, player.player_pos, player.angle,
                     asteroid.original_image, asteroid.pos, asteroid.angle
                 )
-                
                 if hit:
                     self._handle_asteroid_impact(player, asteroid, damage=10)
                     if player.hp <= 0: return True
 
         # B. Wrogowie vs Asteroidy
         for enemy in enemy_manager.enemies[:]:
+            # --- ZMIANA: Ignoruj martwych ---
+            if getattr(enemy, 'is_dead', False):
+                continue
+
             for asteroid in asteroid_manager.asteroids:
                 dist_sq = (enemy.pos - asteroid.pos).length_squared()
                 if dist_sq < (40 + asteroid.radius)**2:
@@ -110,17 +112,19 @@ class Collision():
                         enemy.image, enemy.pos, enemy.angle,
                         asteroid.original_image, asteroid.pos, asteroid.angle
                     )
-                    
                     if hit:
                         self._handle_asteroid_impact(enemy, asteroid, damage=20)
                         if enemy.hp <= 0:
                             if enemy in enemy_manager.enemies:
                                 enemy.death()
-                                #enemy_manager.enemies.remove(enemy)
                             break
 
-        # --- 3. KOLIZJA: STATEK -> STATEK ---
+        # --- 3. KOLIZJA: STATEK (GRACZ) -> STATEK (WRÓG) ---
         for enemy in enemy_manager.enemies[:]:
+            # --- ZMIANA: Ignoruj martwych ---
+            if getattr(enemy, 'is_dead', False):
+                continue
+
             dist_sq = (player.player_pos - enemy.pos).length_squared()
             if dist_sq < 90**2:
                 hit = self.check_mask_collision(
@@ -132,7 +136,6 @@ class Collision():
                     if enemy.hp <= 0:
                         if enemy in enemy_manager.enemies:
                             enemy.death()
-                            #enemy_manager.enemies.remove(enemy)
         
         return False
 
