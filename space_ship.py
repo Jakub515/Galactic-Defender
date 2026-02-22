@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from music import MusicManager
     from shoot import Shoot
-
 class Battle():
     def __init__(self, player_main_class: "SpaceShip", ship_frames: dict, ship_audio_path:list|tuple, cxx:int, cyy:int, player_pos:list|tuple, music: "MusicManager", shoot_obj: "Shoot"):
         self.shoot_obj = shoot_obj
@@ -14,16 +13,6 @@ class Battle():
         self.ship_frames = ship_frames
         self.ship_audio_path = ship_audio_path
         self.player_main_class = player_main_class
-
-        # --- OSŁONY ---
-        try:
-            self.shield_frames = [
-                self.ship_frames["images/Effects/shield1.png"],
-                self.ship_frames["images/Effects/shield2.png"],
-                self.ship_frames["images/Effects/shield3.png"]
-            ]
-        except KeyError:
-            self.shield_frames = [self._create_placeholder_shield(r, (100, 200, 255)) for r in [50, 55, 60]]          
 
         # --- SYSTEM BRONI ---
         self.weapons = [
@@ -44,10 +33,17 @@ class Battle():
             [self.ship_frames["images/Missiles/spaceMissiles_022.png"], 1.5, 40,  3],
             [self.ship_frames["images/Missiles/spaceMissiles_025.png"], 1.5, 45,  3]
         ]
-        self.weapon_timers = [0.0] * len(self.weapons)
-        self.weapon_timers_2 = [0.0] * len(self.weapons_2)
+        
+        self.weapon_timers = [w[3] for w in self.weapons]
+        self.weapon_timers_2 = [w[3] for w in self.weapons_2]
+        
         self.current_weapon = 0
         self.active_set = 1
+        self.want_to_shoot = False
+
+        # --- NOWE: COOLDOWN ZMIANY SYSTEMU ---
+        self.switch_cooldown = 0.0
+        self.max_switch_time = 2.5 
 
         # --- OSŁONY ---
         try:
@@ -63,54 +59,56 @@ class Battle():
         self.shield_timer = 0 
         self.shield_angle = 0 
 
-    def _create_placeholder_shield(self, radius:float, color:tuple|list):
-        s = pygame.Surface((radius*2, radius*2), pygame.SRCALPHA)
-        pygame.draw.circle(s, color, (radius, radius), radius, 3)
-        return s
-
     def fire(self, active:bool): 
         if not self.player_main_class.is_destroyed: self.want_to_shoot = active
 
     def switch_weapon_set(self):
-        if not self.player_main_class.is_destroyed:
+        # Można zmienić zestaw tylko jeśli aktualnie nie trwa już przeładowanie zmiany
+        if not self.player_main_class.is_destroyed and self.switch_cooldown <= 0:
             self.active_set = 2 if self.active_set == 1 else 1
             self.current_weapon = 0
+            self.switch_cooldown = self.max_switch_time # Blokada na 2.5s
 
     def select_weapon(self, index:int):
         if not self.player_main_class.is_destroyed:
             limit = len(self.weapons) if self.active_set == 1 else len(self.weapons_2)
             if index < limit: self.current_weapon = index
 
-    def activate_shield(self, timer:int=250):
-        if not self.player_main_class.is_destroyed:
-            self.shield_active = True
-            self.shield_timer = timer
-
-    # --- LOGIKA ---
     def _handle_shooting(self, forward_dir:pygame.math.Vector2):
+        if self.player_main_class.is_destroyed:
+            return
+        # 1. Sprawdź blokadę zmiany zestawu (2.5s)
+        if self.switch_cooldown > 0:
+            return
+
         w_set = self.weapons if self.active_set == 1 else self.weapons_2
         timers = self.weapon_timers if self.active_set == 1 else self.weapon_timers_2
         
+        # 2. Sprawdź przeładowanie konkretnych pocisków
+        if any(timers[i] < w_set[i][3] for i in range(len(w_set))):
+            return
+
         if self.current_weapon < len(w_set):
             w_data = w_set[self.current_weapon]
-            if timers[self.current_weapon] >= w_data[3]:
-                timers[self.current_weapon] = 0.0
-                
-                # Prędkość pocisku = pęd statku + prędkość bazowa
-                bullet_vel = self.player_main_class.velocity + (forward_dir * w_data[1])
-                
-                self.shoot_obj.create_missle({
-                    "pos": self.player_main_class.player_pos.copy(), 
-                    "vel": bullet_vel, 
-                    "img": w_data[0], 
-                    "damage": w_data[2], 
-                    "dir": self.player_main_class.angle,
-                    "rocket": (self.active_set == 2)
-                })
-                if self.music_obj:
-                    self.music_obj.play("images/audio/sfx_laser1.wav", 0.7)
+            timers[self.current_weapon] = 0.0
+            
+            bullet_vel = self.player_main_class.velocity + (forward_dir * w_data[1])
+            self.shoot_obj.create_missle({
+                "pos": self.player_main_class.player_pos.copy(), 
+                "vel": bullet_vel, 
+                "img": w_data[0], 
+                "damage": w_data[2], 
+                "dir": self.player_main_class.angle,
+                "rocket": (self.active_set == 2)
+            })
+            if self.music_obj:
+                self.music_obj.play("images/audio/sfx_laser1.wav", 0.7)
 
     def update(self, dt:float):
+        # Zmniejszaj cooldown zmiany
+        if self.switch_cooldown > 0:
+            self.switch_cooldown -= dt
+
         if self.shield_active:
             self.shield_angle += 25
             self.shield_timer -= 1
@@ -118,6 +116,7 @@ class Battle():
 
         for i in range(len(self.weapon_timers)): self.weapon_timers[i] += dt
         for i in range(len(self.weapon_timers_2)): self.weapon_timers_2[i] += dt
+        
         if self.want_to_shoot: self._handle_shooting(self.player_main_class.forward_dir)
 
         return [self.player_main_class.player_pos.x, self.player_main_class.player_pos.y]
@@ -127,6 +126,17 @@ class Battle():
             s_rot = pygame.transform.rotate(self.shield_frames[(self.shield_timer//3)%3], self.shield_angle)
             s_rot.set_alpha(150)
             window.blit(s_rot, s_rot.get_rect(center=(draw_x, draw_y)))
+
+    def _create_placeholder_shield(self, radius:float, color:tuple|list):
+        s = pygame.Surface((radius*2, radius*2), pygame.SRCALPHA)
+        pygame.draw.circle(s, color, (radius, radius), radius, 3)
+        return s
+
+
+    def activate_shield(self, timer:int=250):
+        if not self.player_main_class.is_destroyed:
+            self.shield_active = True
+            self.shield_timer = timer
 
 class SpaceShip():
     def __init__(self, ship_frames: dict, ship_audio_path:list|tuple, cxx:int, cyy:int, player_pos:list|tuple, music: "MusicManager", shoot_obj: "Shoot"):
@@ -192,7 +202,6 @@ class SpaceShip():
     def destroy_cause_collision(self):
         if self.is_destroyed:
             return
-        return
         self.is_destroyed = True
         self.explosion_flash = 255 # Inicjalizacja mocnego błysku
         
