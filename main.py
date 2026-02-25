@@ -1,7 +1,7 @@
 import pygame
 import load_images, space_ship, collisions, music, shoot, radar, ui
 from sky import SpaceBackground
-from functions import Event
+from event import Event
 from enemy_ship import EnemyManager
 from asteroids import AsteroidManager
 from camera import Camera

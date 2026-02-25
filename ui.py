@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from space_ship import SpaceShip
     from space_ship import Battle
-    from functions import Event
+    from event import Event
 
 class GameController:
     def __init__(self, battle: "Battle", event_obj: "Event", player: "SpaceShip", cxx: int, cyy: int, loaded_images: dict, clock: pygame.time.Clock):
