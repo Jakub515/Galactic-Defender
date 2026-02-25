@@ -1,6 +1,7 @@
 import pygame
 import math
 import random
+import json
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -30,37 +31,35 @@ class Debris:
     def draw(self, window: pygame.Surface, camera_x: float, camera_y: float):
         if self.life <= 0: return
         alpha = int(self.life * 255)
-        # Optymalizacja: rysowanie bezpośrednio na window zamiast tworzenia Surface co klatkę
         s = self.size
-        # Uproszczone rysowanie bez rotacji Surface'a dla ekstremalnej wydajności odłamków
         rect = pygame.Rect(self.pos.x - camera_x - s//2, self.pos.y - camera_y - s//2, s, s)
-        pygame.draw.rect(window, (*self.color, alpha), rect)
+        # Tworzymy tymczasowy surface dla przezroczystości odłamków
+        surf = pygame.Surface((s, s), pygame.SRCALPHA)
+        surf.fill((*self.color, alpha))
+        window.blit(surf, rect)
 
 class Enemy:
-    def __init__(self, ship_frames: dict, player_ref: "SpaceShip", music_obj: "MusicManager", 
-                 shoot_obj: "Shoot", enemy_manager: "EnemyManager", spawn_pos: pygame.math.Vector2, 
-                 asteroid_manager: "AsteroidManager", blue_fire_frames: list, weapon_data: dict):
+    def __init__(self, type_name: str, config: dict, ship_frames: dict, player_ref: "SpaceShip", 
+                 music_obj: "MusicManager", shoot_obj: "Shoot", enemy_manager: "EnemyManager", 
+                 spawn_pos: pygame.math.Vector2, asteroid_manager: "AsteroidManager", 
+                 blue_fire_frames: list, weapon_data: dict):
         
-        self.music_obj = music_obj
-        self.ship_frames = ship_frames
-        self.player_ref = player_ref
-        self.shoot_obj = shoot_obj
+        self.type_name = type_name
         self.manager = enemy_manager
+        self.player_ref = player_ref
+        self.music_obj = music_obj
+        self.shoot_obj = shoot_obj
         self.asteroid_manager = asteroid_manager 
+
+        # Parametry z JSON
+        self.hp = config["hp"]
+        self.normal_speed_max = config["speed"]
+        self.normal_accel = config["accel"]
+        self.boost_speed_max = config["boost_speed"]
+        self.boost_accel = config["boost_accel"]
 
         self.is_dead = False
         self.debris_list = []
-        
-        enemy_configs = [
-            (0, 30), # Index 0 w cache managera
-            (1, 40), # Index 1 w cache managera
-            (2, 50)  # Index 2 w cache managera
-        ]
-        self.ship_type_idx, self.hp = random.choice(enemy_configs)
-        
-        # self.image pozostaje jako odniesienie do tekstury bazowej (dla kompatybilności)
-        self.image = self.manager.ship_base_images[self.ship_type_idx]
-
         self.pos = pygame.math.Vector2(spawn_pos)
         self.velocity = pygame.math.Vector2(0, 0)
         self.angle = random.uniform(0, 360)
@@ -68,11 +67,6 @@ class Enemy:
         self.angular_acceleration = 0.8
         self.angular_friction = 0.85
         self.linear_friction = 0.99
-
-        self.normal_speed_max = 8.5
-        self.normal_accel = 0.16
-        self.boost_speed_max = 19.0
-        self.boost_accel = 0.65
 
         self.ogień_zza_rakiety = blue_fire_frames
         self.fire_anim_index = 0
@@ -102,6 +96,9 @@ class Enemy:
                 self.debris_list.append(Debris(self.pos, self.velocity, random.choice(colors)))
 
     def update(self, dt: float):
+        if self.hp <= 0 and not self.is_dead:
+           self.death()
+
         if self.is_dead:
             for d in self.debris_list: d.update()
             self.debris_list = [d for d in self.debris_list if d.life > 0]
@@ -112,7 +109,7 @@ class Enemy:
             self.boost_timer -= dt
             if self.boost_timer <= 0: self.is_boosting = False
 
-        # --- LOGIKA AI (bez zmian) ---
+        # AI Logic
         dir_to_player = (self.player_ref.player_pos - self.pos)
         dist_to_player = dir_to_player.length() or 1
         
@@ -125,16 +122,6 @@ class Enemy:
                 diff = self.pos - asteroid.pos
                 force = (1.0 - (dist_to_ast / (asteroid.radius + 450)))
                 avoidance_vector += diff.normalize() * force * 7.0
-                danger_imminent = True
-
-        neighbor_dist = 250
-        for other in self.manager.enemies:
-            if other == self or other.is_dead: continue
-            dist_to_enemy = self.pos.distance_to(other.pos)
-            if dist_to_enemy < neighbor_dist:
-                diff = self.pos - other.pos
-                force = (1.0 - (dist_to_enemy / neighbor_dist)) ** 2
-                avoidance_vector += diff.normalize() * force * 12.0
                 danger_imminent = True
 
         dist_from_center = self.pos.length()
@@ -174,7 +161,6 @@ class Enemy:
             anim_mult = 1.8 if self.is_boosting else 1.0
             self.fire_anim_index = (self.fire_anim_index + self.fire_anim_speed * anim_mult) % len(self.ogień_zza_rakiety)
             
-            # Pre-calc ognia (używamy cache'u z managera dla ognia)
             angle_idx = int(self.angle % 360)
             rot_fire = self.manager.fire_cache[int(self.fire_anim_index)][angle_idx]
             
@@ -222,7 +208,6 @@ class Enemy:
             for d in self.debris_list: d.draw(window, camera_x, camera_y)
             return
             
-        # Draw trails
         for p in self.trail_points:
             ratio = p["life"] / p["max_life"]
             sz = (int(p["size"][0] * ratio), int(p["size"][1] * ratio))
@@ -231,7 +216,6 @@ class Enemy:
                 r_img.set_alpha(int(160 * ratio))
                 window.blit(r_img, r_img.get_rect(center=(p["pos"].x - camera_x, p["pos"].y - camera_y)))
         
-        # Draw thrust fire from cache
         if self.is_thrusting:
             angle_idx = int(self.angle % 360)
             f_rot = self.manager.fire_cache[int(self.fire_anim_index)][angle_idx]
@@ -239,9 +223,8 @@ class Enemy:
             f_off = pygame.math.Vector2(d_off, 0).rotate(-self.angle)
             window.blit(f_rot, f_rot.get_rect(center=(int(self.pos.x - camera_x + f_off.x), int(self.pos.y - camera_y + f_off.y))))
             
-        # DRAW SHIP FROM CACHE (Najważniejsza zmiana wydajnościowa)
         angle_idx = int(self.angle % 360)
-        rotated_ship = self.manager.ship_cache[self.ship_type_idx][angle_idx]
+        rotated_ship = self.manager.ship_cache[self.type_name][angle_idx]
         rect = rotated_ship.get_rect(center=(int(self.pos.x - camera_x), int(self.pos.y - camera_y)))
         window.blit(rotated_ship, rect)
 
@@ -257,42 +240,36 @@ class EnemyManager:
         self.asteroid_manager = asteroid_manager
         self.enemies = []
 
+        # --- LOAD FROM JSON ---
+        self.ENEMY_TYPES = self._load_config("data_slownik.json")
+        self.ENEMY_TYPES = self.ENEMY_TYPES["enemy_types"]
+
         # --- PRE-CACHING ---
-        self.ship_cache = [[], [], []]
-        self.ship_base_images = []
+        self.ship_cache = {}
+        self.ship_base_images = {}
         self._init_ship_cache()
         
         self.blue_fire_frames = self._init_fire_frames()
         self.fire_cache = [[] for _ in range(len(self.blue_fire_frames))]
         self._init_fire_cache()
 
-        # --- DEFINICJA UZBROJENIA ---
-        self.weapons_lasers = [
-            [self.ship_frames["images/Lasers/laserBlue12.png"], 60, 5,   0.1],
-            [self.ship_frames["images/Lasers/laserBlue13.png"], 65, 4,   0.4],
-            [self.ship_frames["images/Lasers/laserBlue14.png"], 70, 3,   0.3],
-            [self.ship_frames["images/Lasers/laserBlue15.png"], 75, 2,   0.2],
-            [self.ship_frames["images/Lasers/laserBlue16.png"], 80, 1,   0.1]
-        ]
-        self.weapons_rockets = [
-            [self.ship_frames["images/Missiles/spaceMissiles_001.png"], 1.5, 5,   3],
-            [self.ship_frames["images/Missiles/spaceMissiles_004.png"], 1.5, 10,  3],
-            [self.ship_frames["images/Missiles/spaceMissiles_007.png"], 1.5, 15,  3],
-            [self.ship_frames["images/Missiles/spaceMissiles_010.png"], 1.5, 20,  3],
-            [self.ship_frames["images/Missiles/spaceMissiles_013.png"], 1.5, 25,  3],
-            [self.ship_frames["images/Missiles/spaceMissiles_016.png"], 1.5, 30,  3],
-            [self.ship_frames["images/Missiles/spaceMissiles_019.png"], 1.5, 35,  3],
-            [self.ship_frames["images/Missiles/spaceMissiles_022.png"], 1.5, 40,  3],
-            [self.ship_frames["images/Missiles/spaceMissiles_025.png"], 1.5, 45,  3]
-        ]
+        self._init_weapons()
+
+    def _load_config(self, filename):
+        try:
+            with open(filename, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"Error loading JSON: {e}")
+            return {}
 
     def _init_ship_cache(self):
-        paths = ["images/Enemies/enemyBlack1.png", "images/Enemies/enemyBlack2.png", "images/Enemies/enemyBlack3.png"]
-        for i, path in enumerate(paths):
-            base_img = pygame.transform.rotate(self.ship_frames[path], -90)
-            self.ship_base_images.append(base_img)
-            for angle in range(360):
-                self.ship_cache[i].append(pygame.transform.rotate(base_img, angle))
+        for name, config in self.ENEMY_TYPES.items():
+            path = config["image_path"]
+            if path in self.ship_frames:
+                base_img = pygame.transform.rotate(self.ship_frames[path], -90)
+                self.ship_base_images[name] = base_img
+                self.ship_cache[name] = [pygame.transform.rotate(base_img, angle) for angle in range(360)]
 
     def _init_fire_frames(self):
         temp_frames = []
@@ -301,7 +278,6 @@ class EnemyManager:
             if path in self.ship_frames:
                 surf = self.ship_frames[path].copy().convert_alpha()
                 w, h = surf.get_size()
-                # Zmiana koloru na niebieski
                 for x in range(w):
                     for y in range(h):
                         r, g, b, a = surf.get_at((x, y))
@@ -311,9 +287,18 @@ class EnemyManager:
 
     def _init_fire_cache(self):
         for i, frame in enumerate(self.blue_fire_frames):
-            # Normalny ogień
             for angle in range(360):
                 self.fire_cache[i].append(pygame.transform.rotate(frame, angle))
+
+    def _init_weapons(self):
+        self.weapons_lasers = [
+            [self.ship_frames["images/Lasers/laserBlue12.png"], 60, 5, 0.1],
+            [self.ship_frames["images/Lasers/laserBlue13.png"], 65, 4, 0.4]
+        ]
+        self.weapons_rockets = [
+            [self.ship_frames["images/Missiles/spaceMissiles_001.png"], 1.5, 5, 3],
+            [self.ship_frames["images/Missiles/spaceMissiles_004.png"], 1.5, 10, 3]
+        ]
 
     def update(self, dt: float):
         living = [e for e in self.enemies if not e.is_dead]
@@ -323,18 +308,18 @@ class EnemyManager:
             spawn_pos = self.player_ref.player_pos + pygame.math.Vector2(math.cos(angle)*dist, math.sin(angle)*dist)
             
             if spawn_pos.length() < self.world_radius - 250:
-                active_set = random.choice([1, 2])
+                type_name = random.choice(list(self.ENEMY_TYPES.keys()))
+                config = self.ENEMY_TYPES[type_name]
+                
+                active_set = config["weapon_set"]
                 w_list = self.weapons_lasers if active_set == 1 else self.weapons_rockets
                 selected_weapon = random.choice(w_list)
                 
-                weapon_data = {
-                    "active_set": active_set,
-                    "weapon_info": selected_weapon
-                }
+                weapon_data = {"active_set": active_set, "weapon_info": selected_weapon}
 
-                self.enemies.append(Enemy(self.ship_frames, self.player_ref, self.music_obj, 
-                                        self.shoot_obj, self, spawn_pos, self.asteroid_manager, 
-                                        self.blue_fire_frames, weapon_data))
+                self.enemies.append(Enemy(type_name, config, self.ship_frames, self.player_ref, 
+                                        self.music_obj, self.shoot_obj, self, spawn_pos, 
+                                        self.asteroid_manager, self.blue_fire_frames, weapon_data))
 
         for enemy in self.enemies[:]:
             enemy.update(dt)
