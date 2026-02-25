@@ -42,9 +42,9 @@ class Game():
             {"pos": pygame.math.Vector2(0, 0), "radius": 4500, "count": 50}
         ]
         self.asteroid_manager = AsteroidManager(loaded_space_frames_full, self.pola_asteroid)
-        self.enemy_manager = EnemyManager(loaded_space_frames, self.player, music_obj, 20, self.shoot_obj, self.WORLD_RADIUS, self.asteroid_manager)
+        self.enemy_manager = EnemyManager(loaded_space_frames, self.player, music_obj, 5, self.shoot_obj, self.WORLD_RADIUS, self.asteroid_manager)
 
-        self.colision_obj = collisions.Collision(music_obj)
+        self.colision_obj = collisions.Collision(music_obj, cxx, cyy)
         self.radar_obj = radar.Radar(cxx, cyy, 200, self.WORLD_RADIUS)
         self.game_controller = ui.GameController(self.player_shoot, events_obj, self.player, cxx, cyy, loaded_space_frames_full, clock)
         self.paused = False

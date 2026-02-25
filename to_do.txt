@@ -2,4 +2,4 @@
 2. optymalizacja pamięci pod kątem dużej ilości enemie
 3. stworzenie konfiguracji różnych typów enemie
 4. konfiguracja ilości i częstotliwości enemie w json i w init dać
-5. możliwość zrobienia leveli na podsrawie danych w json
+5. możliwość zrobienia leveli na podstawie danych w json
