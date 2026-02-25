@@ -3,6 +3,7 @@ import math
 import itertools
 from typing import TYPE_CHECKING
 
+
 if TYPE_CHECKING:
     from music import MusicManager
     from shoot import Shoot
