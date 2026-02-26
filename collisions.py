@@ -10,6 +10,7 @@ if TYPE_CHECKING:
     from asteroids import AsteroidManager
     from space_ship import SpaceShip, Battle
     from enemy_ship import EnemyManager, Enemy
+    from level_manager import LevelManager
 
 class Collision():
     def __init__(self, mixer_obj: "MusicManager", cxx: int, cyy: int):
@@ -33,7 +34,7 @@ class Collision():
         return result
 
     def check_collisions(self, battle: "Battle", player: "SpaceShip", enemy_manager: "EnemyManager", 
-                         shoot_obj: "Shoot", asteroid_manager: "AsteroidManager"):
+                         shoot_obj: "Shoot", asteroid_manager: "AsteroidManager", level_manager: "LevelManager"):
         self._mask_cache = {}
         sw, sh = self.cxx, self.cyy
         player_pos = player.player_pos
@@ -78,9 +79,12 @@ class Collision():
                 # Gracz może trafić każdego wroga. 
                 # Wróg może trafić innego wroga (ale nie samego siebie).
                 is_own_shot = shot.get("is_enemy_shot") and shot.get("enemy_id") == enemy.id
-                
+                is_player_shooting = shot.get("is_player_shooting")
+
                 if not is_own_shot:
                     if (shot_pos - enemy.pos).length_squared() < 55**2:
+                        if is_player_shooting:
+                            level_manager.xp += shot["damage"]
                         enemy.hp -= shot["damage"]
                         shot_hit = True
                         if enemy.hp <= 0:
@@ -163,18 +167,38 @@ class Collision():
     def _handle_asteroid_impact(self, ship, asteroid, damage: int):
         is_player = hasattr(ship, 'player_pos')
         ship_pos = ship.player_pos if is_player else ship.pos
+        
+        # 1. Obliczanie kierunku odbicia (od środka asteroidy do statku)
         push_dir = ship_pos - asteroid.pos
-        if push_dir.length_squared() > 0: push_dir = push_dir.normalize()
-        else: push_dir = pygame.math.Vector2(1, 0)
+        dist_sq = push_dir.length_squared()
+        
+        if dist_sq > 0:
+            push_dir = push_dir.normalize()
+        else:
+            push_dir = pygame.math.Vector2(1, 0)
+
+        # 2. Logika odbicia (Fizyka)
+        # Odwracamy prędkość i dodajemy siłę odrzutu w stronę push_dir
+        bounce_strength = 400.0  # Siła odrzutu
         
         if is_player:
+            # Gracz odbija się mocno
+            ship.velocity = push_dir * max(ship.velocity.length() * 0.6, bounce_strength*0.01)
+            # Odejmujemy HP zamiast zabijać od razu
             ship.hp = 0
             ship.destroy_cause_collision()
         else:
-            ship.pos += push_dir * 12
+            ship.velocity = push_dir * max(ship.velocity.length() * 0.5, bounce_strength * 0.005)
             ship.hp = 0
             ship.death()
-        ship.velocity *= -0.5
+
+        # 3. Przesunięcie statku (Anti-stuck)
+        # Natychmiastowe odsunięcie statku poza promień asteroidy, żeby nie utknął w środku
+        overlap = (asteroid.radius + 20) # 20 to przybliżony promień statku
+        if is_player:
+            ship.player_pos = asteroid.pos + push_dir * overlap
+        else:
+            ship.pos = asteroid.pos + push_dir * overlap
 
     def _handle_ship_collision(self, player, enemy):
         push_dir = (player.player_pos - enemy.pos)

@@ -31,10 +31,9 @@ class Debris:
         if self.life <= 0: return
         alpha = int(self.life * 255)
         s = self.size
-        rect = pygame.Rect(self.pos.x - camera_x - s//2, self.pos.y - camera_y - s//2, s, s)
         surf = pygame.Surface((s, s), pygame.SRCALPHA)
         surf.fill((*self.color, alpha))
-        window.blit(surf, rect)
+        window.blit(surf, (self.pos.x - camera_x - s//2, self.pos.y - camera_y - s//2))
 
 class IDGenerator:
     _counter = 999
@@ -42,6 +41,7 @@ class IDGenerator:
     def get_new_id(cls):
         cls._counter += 1
         return cls._counter
+
 class Enemy:
     def __init__(self, type_name: str, config: dict, ship_frames: dict, player_ref: "SpaceShip", 
                  music_obj: "MusicManager", shoot_obj: "Shoot", enemy_manager: "EnemyManager", 
@@ -58,8 +58,8 @@ class Enemy:
         self.hp = config["hp"]
         self.normal_speed_max = config["speed"]
         self.normal_accel = config["accel"]
-        self.boost_speed_max = config["boost_speed"]
-        self.boost_accel = config["boost_accel"]
+        self.boost_speed_max = config.get("boost_speed", config["speed"] * 1.5)
+        self.boost_accel = config.get("boost_accel", config["accel"] * 2.0)
 
         self.is_dead = False
         self.debris_list = []
@@ -100,19 +100,17 @@ class Enemy:
                 self.debris_list.append(Debris(self.pos, self.velocity, random.choice(colors)))
 
     def update(self, dt: float):
-        if (self.hp <= 0) and not self.is_dead:
-           self.death()
+        if self.hp <= 0 and not self.is_dead:
+            self.death()
 
         if self.is_dead:
             for d in self.debris_list: d.update()
             self.debris_list = [d for d in self.debris_list if d.life > 0]
             return
 
+        # --- AI & RUCH ---
         if self.boost_cooldown_timer > 0: self.boost_cooldown_timer -= dt
-        if self.is_boosting:
-            self.boost_timer -= dt
-            if self.boost_timer <= 0: self.is_boosting = False
-
+        
         dir_to_player = (self.player_ref.player_pos - self.pos)
         dist_to_player = dir_to_player.length() or 1
         
@@ -121,10 +119,10 @@ class Enemy:
         
         for asteroid in self.asteroid_manager.asteroids:
             dist_to_ast = self.pos.distance_to(asteroid.pos)
-            if dist_to_ast < asteroid.radius + 450:
+            if dist_to_ast < asteroid.radius + 300:
                 diff = self.pos - asteroid.pos
-                force = (1.0 - (dist_to_ast / (asteroid.radius + 450)))
-                avoidance_vector += diff.normalize() * force * 7.0
+                force = (1.0 - (dist_to_ast / (asteroid.radius + 300)))
+                avoidance_vector += diff.normalize() * force * 10.0
                 danger_imminent = True
 
         dist_from_center = self.pos.length()
@@ -140,23 +138,30 @@ class Enemy:
             combined_dir = (combined_dir + avoidance_vector).normalize()
             self.is_thrusting = True
         else:
-            self.is_thrusting = dist_to_player > 380
+            self.is_thrusting = dist_to_player > 350
 
         target_angle = -math.degrees(math.atan2(combined_dir.y, combined_dir.x))
         angle_diff = (target_angle - self.angle + 180) % 360 - 180
         if angle_diff > 2: self.angular_velocity += self.angular_acceleration
         elif angle_diff < -2: self.angular_velocity -= self.angular_acceleration
+        
         self.angular_velocity *= self.angular_friction
         self.angle += self.angular_velocity
 
+        # Boost logic
         if not self.is_boosting and self.boost_cooldown_timer <= 0:
-            if (dist_to_player > 750 or is_near_border) and abs(angle_diff) < 25 and not danger_imminent:
+            if (dist_to_player > 800 or is_near_border) and abs(angle_diff) < 20 and not danger_imminent:
                 self.is_boosting = True
                 self.boost_timer = self.boost_max_duration
                 self.boost_cooldown_timer = self.boost_cooldown_time
 
+        if self.is_boosting:
+            self.boost_timer -= dt
+            if self.boost_timer <= 0: self.is_boosting = False
+
         max_v = self.boost_speed_max if self.is_boosting else self.normal_speed_max
         accel = self.boost_accel if self.is_boosting else self.normal_accel
+        
         rad = math.radians(-self.angle)
         forward = pygame.math.Vector2(math.cos(rad), math.sin(rad))
         
@@ -165,15 +170,14 @@ class Enemy:
             anim_mult = 1.8 if self.is_boosting else 1.0
             self.fire_anim_index = (self.fire_anim_index + self.fire_anim_speed * anim_mult) % len(self.ogień_zza_rakiety)
             
-            angle_idx = int(self.angle % 360)
-            rot_fire = self.manager.fire_cache[int(self.fire_anim_index)][angle_idx]
-            
-            d_off = -32 if self.is_boosting else -20
-            fire_pos_offset = pygame.math.Vector2(d_off, 0).rotate(-self.angle)
-            self.trail_points.append({
-                "pos": self.pos + fire_pos_offset, "img": rot_fire, "size": rot_fire.get_size(), 
-                "life": 22.0 if self.is_boosting else 12.0, "max_life": 22.0 if self.is_boosting else 12.0
-            })
+            # Trail / Smoke
+            if random.random() > 0.3:
+                d_off = -35 if self.is_boosting else -22
+                fire_pos = self.pos + pygame.math.Vector2(d_off, 0).rotate(-self.angle)
+                self.trail_points.append({
+                    "pos": fire_pos, "life": 15.0 if self.is_boosting else 8.0, 
+                    "max": 15.0 if self.is_boosting else 8.0, "angle": self.angle
+                })
 
         self.velocity *= self.linear_friction
         if self.velocity.length() > max_v: self.velocity.scale_to_length(max_v)
@@ -183,72 +187,86 @@ class Enemy:
             p["life"] -= 1.0
             if p["life"] <= 0: self.trail_points.remove(p)
 
-        # LOGIKA STRZELANIA - POPRAWIONA
+        # --- LOGIKA STRZELANIA ---
         self.weapon_timer += dt
-        # Zasięg zwiększony do 2000 px, żeby rakiety miały sens
-        if abs(angle_diff) < 25 and dist_to_player < 2000 and not danger_imminent:
-            # Dystans przełączania: powyżej 450 rakiety, poniżej lasery
-            if dist_to_player < 750:
-                current_weapon = self.rocket_info
-                is_rocket = True
-            else:
-                current_weapon = self.laser_info
-                is_rocket = False
+        
+        # 1. Zwiększony zasięg do 3000 pikseli (to jest grubo poza ekranem)
+        # Usunąłem warunek 'not danger_imminent', żeby boty strzelały agresywniej nawet pod presją
+        if dist_to_player < 3000:
             
-            if self.weapon_timer >= current_weapon[3]:
-                self.shoot(current_weapon, is_rocket)
+            weapon_to_use = None
+            is_rock = False
+
+            # 2. Szansa na rakietę - ROŚNIE wraz z dystansem (artyleria dalekiego zasięgu)
+            # Przy 2000px szansa to 100% (2000/2000), przy 200px to tylko 10%
+            rocket_chance = dist_to_player / 2000.0
+            
+            # Losowanie broni
+            if self.rocket_info and random.random() < rocket_chance:
+                # RAKIETY: Bardzo luźny kąt (60 stopni). 
+                # Bot strzela "w Twoją stronę" nawet jeśli Cię nie widzi.
+                if abs(angle_diff) < 60:
+                    weapon_to_use = self.rocket_info
+                    is_rock = True
+            elif self.laser_info:
+                # LASERY: Standardowy kąt (30 stopni). 
+                # Używane głównie w bliższym kontakcie.
+                if abs(angle_diff) < 30:
+                    weapon_to_use = self.laser_info
+                    is_rock = False
+
+            # 3. Wykonaj strzał jeśli wybrano broń i cooldown minął
+            if weapon_to_use and self.weapon_timer >= weapon_to_use[3]:
+                # Opcjonalnie: resetuj timer tylko po udanym strzale
+                self.shoot(weapon_to_use, is_rock)
+                self.weapon_timer = 0 # Zerowanie timera po strzale
 
     def shoot(self, weapon_info: list, is_rocket: bool):
         self.weapon_timer = 0.0
         rad = math.radians(-self.angle)
         direction = pygame.math.Vector2(math.cos(rad), math.sin(rad))
-        
-        # Prędkość wylotowa pocisku (weapon_info[1]) plus prędkość statku
         bullet_vel = self.velocity + (direction * weapon_info[1])
         
         self.shoot_obj.create_missle({
-            "pos": self.pos.copy(),
-            "vel": bullet_vel,
-            "img": weapon_info[0],
-            "damage": weapon_info[2],
-            "dir": self.angle,
-            "rocket": is_rocket,
-            "is_enemy_shot": True,
-            "enemy_id": self.id
+            "pos": self.pos.copy(), "vel": bullet_vel, "img": weapon_info[0],
+            "damage": weapon_info[2], "dir": self.angle, "rocket": is_rocket,
+            "is_enemy_shot": True, "enemy_id": self.id
         })
         
         if self.music_obj:
             sfx = "images/audio/sfx_laser2.wav" if is_rocket else "images/audio/sfx_laser1.wav"
-            self.music_obj.play(sfx, 0.3)
+            self.music_obj.play(sfx, 0.25)
 
     def draw(self, window: pygame.Surface, camera_x: float, camera_y: float):
         if self.is_dead:
             for d in self.debris_list: d.draw(window, camera_x, camera_y)
             return
-            
-        """for p in self.trail_points:
-            ratio = p["life"] / p["max_life"]
-            sz = (int(p["size"][0] * ratio), int(p["size"][1] * ratio))
-            if sz[0] > 1 and sz[1] > 1:
-                r_img = pygame.transform.scale(p["img"], sz)
-                r_img.set_alpha(int(160 * ratio))
-                window.blit(r_img, r_img.get_rect(center=(p["pos"].x - camera_x, p["pos"].y - camera_y)))
-        
+
+        # Rysowanie smugi (trail)
+        for p in self.trail_points:
+            ratio = p["life"] / p["max"]
+            angle_idx = int(p["angle"] % 360)
+            f_img = self.manager.fire_cache[int(self.fire_anim_index % len(self.ogień_zza_rakiety))][angle_idx]
+            # Skalowanie w dół wraz z życiem
+            scaled_f = pygame.transform.scale(f_img, (int(f_img.get_width()*ratio), int(f_img.get_height()*ratio)))
+            scaled_f.set_alpha(int(150 * ratio))
+            window.blit(scaled_f, scaled_f.get_rect(center=(p["pos"].x - camera_x, p["pos"].y - camera_y)))
+
+        # Rysowanie ognia silnika bezpośrednio za statkiem
         if self.is_thrusting:
             angle_idx = int(self.angle % 360)
-            f_rot = self.manager.fire_cache[int(self.fire_anim_index)][angle_idx]
+            f_img = self.manager.fire_cache[int(self.fire_anim_index)][angle_idx]
             d_off = -32 if self.is_boosting else -20
             f_off = pygame.math.Vector2(d_off, 0).rotate(-self.angle)
-            window.blit(f_rot, f_rot.get_rect(center=(int(self.pos.x - camera_x + f_off.x), int(self.pos.y - camera_y + f_off.y))))"""
-            
+            window.blit(f_img, f_img.get_rect(center=(self.pos.x - camera_x + f_off.x, self.pos.y - camera_y + f_off.y)))
+
+        # Rysowanie statku
         angle_idx = int(self.angle % 360)
         rotated_ship = self.manager.ship_cache[self.type_name][angle_idx]
-        rect = rotated_ship.get_rect(center=(int(self.pos.x - camera_x), int(self.pos.y - camera_y)))
-        window.blit(rotated_ship, rect)
-
+        window.blit(rotated_ship, rotated_ship.get_rect(center=(int(self.pos.x - camera_x), int(self.pos.y - camera_y))))
 class EnemyManager:
-    def __init__(self, ship_frames: dict, player_ref: "SpaceShip", music_obj: "MusicManager", max_enemies: int, 
-                 shoot_obj: "Shoot", world_radius: int, asteroid_manager: "AsteroidManager"):
+    def __init__(self, ship_frames, player_ref, music_obj, max_enemies, 
+                 shoot_obj, world_radius, asteroid_manager):
         self.ship_frames = ship_frames
         self.player_ref = player_ref
         self.music_obj = music_obj
@@ -271,110 +289,118 @@ class EnemyManager:
         self.fire_cache = [[] for _ in range(len(self.blue_fire_frames))]
         self._init_fire_cache()
 
-        # --- SYSTEM BRONI Z JSON ---
+        # --- SYSTEM BRONI (Listy indeksowane) ---
         self.weapons_lasers = []
         self.weapons_rockets = []
         self._init_weapons()
 
-    def _load_config(self, filename: str) -> dict:
-        """Wczytuje słownik z pliku JSON."""
+    def _load_config(self, filename):
         try:
             with open(filename, 'r', encoding='utf-8') as f:
                 return json.load(f)
         except Exception as e:
-            print(f"Błąd krytyczny EnemyManager: Nie można wczytać {filename}. {e}")
+            print(f"Błąd ładowania JSON: {e}")
             return {}
 
     def _init_ship_cache(self):
-        """Przygotowuje obrócone klatki statków dla każdego typu."""
         for name, config in self.ENEMY_TYPES.items():
-            path = config["image_path"]
+            path = config.get("image_path")
             if path in self.ship_frames:
-                # Obrót o -90, bo grafiki Kenneya domyślnie patrzą w górę
+                # Rotacja o -90 dla grafik Kenneya
                 base_img = pygame.transform.rotate(self.ship_frames[path], -90)
                 self.ship_base_images[name] = base_img
                 self.ship_cache[name] = [pygame.transform.rotate(base_img, angle) for angle in range(360)]
 
     def _init_fire_frames(self):
-        """Przygotowuje animację ognia (zmienioną na niebieską)."""
         temp_frames = []
-        fire_paths = [f"images/dym/Explosion/explosion0{i}.png" for i in range(9)]
-        for path in fire_paths:
+        for i in range(9):
+            path = f"images/dym/Explosion/explosion0{i}.png"
             if path in self.ship_frames:
                 surf = self.ship_frames[path].copy().convert_alpha()
-                # Zamiana kanałów R i B dla niebieskiego efektu
-                w, h = surf.get_size()
-                for x in range(w):
-                    for y in range(h):
+                for x in range(surf.get_width()):
+                    for y in range(surf.get_height()):
                         r, g, b, a = surf.get_at((x, y))
                         if a > 0: surf.set_at((x, y), (b, g, r, a))
-                temp_frames.append(pygame.transform.scale(surf, (int(w * 0.12), int(h * 0.10))))
+                temp_frames.append(pygame.transform.scale(surf, (20, 16)))
         return temp_frames
 
     def _init_fire_cache(self):
-        """Cache'uje rotację ognia, by nie liczyć jej co klatkę."""
         for i, frame in enumerate(self.blue_fire_frames):
             for angle in range(360):
                 self.fire_cache[i].append(pygame.transform.rotate(frame, angle))
 
     def _init_weapons(self):
-        """Dynamicznie buduje bazy broni z sekcji 'enemy-weapon-data'."""
-        weapon_data = self.config_all.get("enemy-weapon-data", {})
+        """Wczytuje bronie z 'enemy-weapon-data' do list."""
+        w_data = self.config_all.get("enemy-weapon-data", {})
         
-        # 1. Ładowanie Laserów
-        lasers_dict = weapon_data.get("lasers", {})
-        # Sortowanie laser1, laser2... zapewnia poprawną kolejność indeksów
-        for key in sorted(lasers_dict.keys(), key=lambda x: int(x.replace('laser', ''))):
-            w = lasers_dict[key]
+        # Lasery
+        l_dict = w_data.get("lasers", {})
+        # Sortujemy klucze laser1, laser2..., żeby indeksy się zgadzały
+        for key in sorted(l_dict.keys(), key=lambda x: int(''.join(filter(str.isdigit, x)) or 0)):
+            w = l_dict[key]
             img = self.ship_frames.get(w["path"])
             if img:
-                # Format: [Surface, speed, damage, cooldown]
                 self.weapons_lasers.append([img, w["speed"], w["damage"], w["cooldown"]])
 
-        # 2. Ładowanie Rakiet
-        rockets_dict = weapon_data.get("rockets", {})
-        for key in sorted(rockets_dict.keys(), key=lambda x: int(x.replace('rocket', ''))):
-            w = rockets_dict[key]
+        # Rakiety
+        r_dict = w_data.get("rockets", {})
+        for key in sorted(r_dict.keys(), key=lambda x: int(''.join(filter(str.isdigit, x)) or 0)):
+            w = r_dict[key]
             img = self.ship_frames.get(w["path"])
             if img:
                 self.weapons_rockets.append([img, w["speed"], w["damage"], w["cooldown"]])
+        
+        print(f"Zasoby broni załadowane: Lasery: {len(self.weapons_lasers)}, Rakiety: {len(self.weapons_rockets)}")
 
-    def update(self, dt: float):
-        """Zarządza spawnem i aktualizacją przeciwników."""
+    def _get_random_weapon(self, bot_config, weapon_key, source_list):
+        """Pobiera losową broń na podstawie indeksów z JSON."""
+        indices = bot_config.get(weapon_key)
+        
+        # Jeśli False, None lub pusta lista w JSON
+        if indices is False or indices is None or not source_list:
+            return None
+        
+        try:
+            # Obsługa listy [1, 2] lub pojedynczej liczby
+            chosen_nr = random.choice(indices) if isinstance(indices, list) else indices
+            
+            # Konwersja na indeks listy (1-based -> 0-based)
+            idx = max(0, min(int(chosen_nr) - 1, len(source_list) - 1))
+            return source_list[idx]
+        except (ValueError, TypeError, IndexError):
+            return None
+
+    def update(self, dt):
         living = [e for e in self.enemies if not e.is_dead]
         
-        # Spawn nowego przeciwnika, jeśli jest miejsce
         if len(living) < self.max_enemies:
+            # Losowanie pozycji spawnu
             angle = random.uniform(0, 2 * math.pi)
-            dist = random.uniform(1100, 1400)
+            dist = random.uniform(1100, 1500)
             spawn_pos = self.player_ref.player_pos + pygame.math.Vector2(math.cos(angle)*dist, math.sin(angle)*dist)
             
-            # Sprawdzenie granic świata
-            if spawn_pos.length() < self.world_radius - 250:
+            if spawn_pos.length() < self.world_radius - 300:
                 type_name = random.choice(list(self.ENEMY_TYPES.keys()))
-                config = self.ENEMY_TYPES[type_name]
+                bot_config = self.ENEMY_TYPES[type_name]
                 
-                # Bezpieczne pobieranie indeksów broni
-                l_idx = min(config.get("laser", 1) - 1, len(self.weapons_lasers)-1)
-                r_idx = min(config.get("rocket", 1) - 1, len(self.weapons_rockets)-1)
-
+                # --- KLUCZOWA POPRAWKA: dopasowanie do Twojego JSON (laser/rocket bez 's') ---
                 weapon_data = {
-                    "laser": self.weapons_lasers[max(0, l_idx)],
-                    "rocket": self.weapons_rockets[max(0, r_idx)]
+                    "laser": self._get_random_weapon(bot_config, "laser", self.weapons_lasers),
+                    "rocket": self._get_random_weapon(bot_config, "rocket", self.weapons_rockets)
                 }
 
-                self.enemies.append(Enemy(type_name, config, self.ship_frames, self.player_ref, 
-                                        self.music_obj, self.shoot_obj, self, spawn_pos, 
-                                        self.asteroid_manager, self.blue_fire_frames, weapon_data))
+                # Import klasy Enemy tutaj, jeśli jest w innym pliku, lub u góry
+                from enemy_ship import Enemy
+                new_enemy = Enemy(type_name, bot_config, self.ship_frames, self.player_ref, 
+                                 self.music_obj, self.shoot_obj, self, spawn_pos, 
+                                 self.asteroid_manager, self.blue_fire_frames, weapon_data)
+                self.enemies.append(new_enemy)
 
-        # Aktualizacja wszystkich (żywych i w trakcie animacji śmierci)
         for enemy in self.enemies[:]:
             enemy.update(dt)
-            # Usuń, gdy zginął i animacja gruzu dobiegła końca
             if enemy.is_dead and not enemy.debris_list:
                 self.enemies.remove(enemy)
 
-    def draw(self, window: pygame.Surface, camera_x: float, camera_y: float):
-        """Renderowanie wszystkich przeciwników."""
+    def draw(self, window, camera_x, camera_y):
         for enemy in self.enemies:
             enemy.draw(window, camera_x, camera_y)

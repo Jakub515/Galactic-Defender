@@ -150,7 +150,8 @@ class Battle():
                 "img": w_data[0], 
                 "damage": w_data[2], 
                 "dir": self.player_main_class.angle,
-                "rocket": (self.active_set == 2)
+                "rocket": (self.active_set == 2),
+                "is_player_shooting": True
             })
             if self.music_obj:
                 self.music_obj.play("images/audio/sfx_laser1.wav", 0.7)

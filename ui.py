@@ -6,10 +6,11 @@ if TYPE_CHECKING:
     from space_ship import SpaceShip
     from space_ship import Battle
     from event import Event
+    from level_manager import LevelManager
 
 class GameController:
-    def __init__(self, battle: "Battle", event_obj: "Event", player: "SpaceShip", cxx: int, cyy: int, loaded_images: dict, clock: pygame.time.Clock):
-        self.ui = UI(event_obj, cxx, cyy, loaded_images, battle, player)
+    def __init__(self, battle: "Battle", event_obj: "Event", player: "SpaceShip", cxx: int, cyy: int, loaded_images: dict, clock: pygame.time.Clock, level_manager: "LevelManager"):
+        self.ui = UI(event_obj, cxx, cyy, loaded_images, battle, player, level_manager)
         self.input_handler = InputHandler(event_obj, player, battle, self.ui)
         self.clock = clock
 
@@ -51,17 +52,22 @@ class InputHandler:
                 break
 
 class UI:
-    def __init__(self, event_obj: "Event", screen_width: int, screen_height: int, images: dict, battle: "Battle", space_ship: "SpaceShip"):
+    def __init__(self, event_obj: "Event", screen_width: int, screen_height: int, images: dict, battle: "Battle", space_ship: "SpaceShip", level_manager: "LevelManager"):
         self.event_obj = event_obj
         self.images = images
         self.battle = battle
         self.cxx = screen_width
         self.cyy = screen_height
         self.space_ship = space_ship
+        self.level_manager = level_manager
         
         self.displayed_hp = space_ship.hp
         self.max_hp = 100
         self.pulse_time = 0 
+
+        self.displayed_xp = self.level_manager.xp
+        self.max_xp = self.level_manager.max_xp
+        self.pulse_time_xp = 0 
         
         try:
             self.font = pygame.font.Font("fonts/JetBrainsMono-Italic-VariableFont_wght.ttf", 16)
@@ -127,6 +133,11 @@ class UI:
             self.frame_x = self.target_x
             self.frame_vel = 0
 
+        if self.displayed_xp < self.level_manager.xp:
+            self.displayed_xp += (self.level_manager.xp - self.displayed_xp) * 0.05
+        else:
+            self.displayed_xp = self.level_manager.xp
+
     def draw(self, window: pygame.Surface):
         overlay = pygame.Surface((self.cxx, 110), pygame.SRCALPHA)
         pygame.draw.rect(overlay, (0, 0, 0, 100), (0, 0, self.cxx, 110))
@@ -153,6 +164,8 @@ class UI:
         
         hp_label = self.font.render(f"HEALTH: {int(actual_ratio*100)}%", True, (255, 255, 255))
         window.blit(hp_label, (hp_x, hp_y + hp_h + 5))
+
+        
 
         active_paths = self.laser_paths if self.battle.active_set == 1 else self.missile_paths
         weapon_specs = self.battle.weapons if self.battle.active_set == 1 else self.battle.weapons_2
@@ -210,6 +223,45 @@ class UI:
         b_ratio = 1.0 - (ship.boost_cooldown / ship.max_boost_cooldown)
         b_col = (255, 150, 0) if ship.is_boost_ready else (100, 50, 0)
         self._draw_skill_bar(window, start_x + total_w + 30, "BOOST", b_ratio, b_col)
+
+        # --- SEKCJA XP WYŚRODKOWANA POD BRONIĄ ---
+        self.max_xp = self.level_manager.max_xp
+        
+        # Obliczamy wymiary: szerokość taka sama jak paska broni, wysokość mniejsza
+        xp_w = total_w 
+        xp_h = 8
+        xp_x = start_x
+        # y_pos (paski broni) + slot_size (wysokość slotu) + 45 (odstęp pod napisem systemu)
+        xp_y = self.y_pos + self.slot_size + 45 
+
+        actual_xp_ratio = max(0, min(1, self.level_manager.xp / self.max_xp))
+        ghost_xp_ratio = max(0, min(1, self.displayed_xp / self.max_xp))
+        
+        # Kolory: Elegancki fiolet/niebieski dla XP
+        xp_bg_col = (20, 20, 40, 180)
+        xp_main_col = (0, 180, 255)      # Jasnoniebieski
+        xp_ghost_col = (100, 255, 255)   # Cyjan przy zdobywaniu
+
+        # Tło paska (Surface z alpha dla lekkiej przeźroczystości)
+        xp_surface = pygame.Surface((xp_w, xp_h), pygame.SRCALPHA)
+        pygame.draw.rect(xp_surface, xp_bg_col, (0, 0, xp_w, xp_h), border_radius=4)
+        
+        # Rysowanie postępu
+        if actual_xp_ratio > 0:
+            # Pasek "ducha" (szybki błysk przy zdobyciu)
+            pygame.draw.rect(xp_surface, xp_ghost_col, (0, 0, int(xp_w * actual_xp_ratio), xp_h), border_radius=4)
+            # Pasek właściwy (płynnie goniący)
+            pygame.draw.rect(xp_surface, xp_main_col, (0, 0, int(xp_w * ghost_xp_ratio), xp_h), border_radius=4)
+        
+        # Ramka
+        pygame.draw.rect(xp_surface, (100, 100, 200, 255), (0, 0, xp_w, xp_h), 1, border_radius=4)
+        window.blit(xp_surface, (xp_x, xp_y))
+
+        # Napis XP pod paskiem
+        xp_text = f"LEVEL {self.level_manager.level}  |  {int(self.level_manager.xp)} / {int(self.max_xp)} XP"
+        xp_label = self.font.render(xp_text, True, (200, 220, 255))
+        xp_label.set_alpha(180) # Lekko przeźroczysty napis
+        window.blit(xp_label, (self.cxx // 2 - xp_label.get_width() // 2, xp_y + xp_h + 4))
 
     def _draw_skill_bar(self, window, x, label, ratio, color):
         bar_w, bar_h = 12, self.slot_size

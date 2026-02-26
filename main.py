@@ -1,5 +1,5 @@
 import pygame
-import load_images, space_ship, collisions, music, shoot, radar, ui
+import load_images, space_ship, collisions, music, shoot, radar, ui, level_manager
 from sky import SpaceBackground
 from event import Event
 from enemy_ship import EnemyManager
@@ -9,7 +9,6 @@ from camera import Camera
 # --- A. INICJALIZACJA I KONFIGURACJA ---
 pygame.init()
 pygame.font.init()
-
 
 FPS = 60
 clock = pygame.time.Clock()
@@ -45,9 +44,10 @@ class Game():
         self.asteroid_manager = AsteroidManager(loaded_space_frames_full, self.pola_asteroid)
         self.enemy_manager = EnemyManager(loaded_space_frames, self.player, music_obj, 5, self.shoot_obj, self.WORLD_RADIUS, self.asteroid_manager)
 
+        self.level_manager = level_manager.LevelManager()
         self.colision_obj = collisions.Collision(music_obj, cxx, cyy)
         self.radar_obj = radar.Radar(cxx, cyy, 200, self.WORLD_RADIUS)
-        self.game_controller = ui.GameController(self.player_shoot, events_obj, self.player, cxx, cyy, loaded_space_frames_full, clock)
+        self.game_controller = ui.GameController(self.player_shoot, events_obj, self.player, cxx, cyy, loaded_space_frames_full, clock, self.level_manager)
         self.paused = False
         self.dict = None
 
@@ -58,6 +58,7 @@ class Game():
         if self.paused:
             return
         # 2. Logika (Update)
+        self.level_manager.update()
         self.game_controller.update(dt)
         self.player.update(dt)
         self.player_shoot.update(dt)
@@ -72,7 +73,7 @@ class Game():
             self.player.velocity *= -0.3
             self.player.destroy_cause_collision()
 
-        self.colision_obj.check_collisions(self.player_shoot, self.player, self.enemy_manager, self.shoot_obj, self.asteroid_manager)
+        self.colision_obj.check_collisions(self.player_shoot, self.player, self.enemy_manager, self.shoot_obj, self.asteroid_manager, self.level_manager)
         
         # Aktualizacja kamery
         self.camera.update(self.player.player_pos, self.player.velocity)
