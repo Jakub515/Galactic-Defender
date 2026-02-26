@@ -35,50 +35,61 @@ class Collision():
     def check_collisions(self, battle: "Battle", player: "SpaceShip", enemy_manager: "EnemyManager", 
                          shoot_obj: "Shoot", asteroid_manager: "AsteroidManager"):
         self._mask_cache = {}
-        
         sw, sh = self.cxx, self.cyy
         player_pos = player.player_pos
         active_dist_sq = (sw * 1.2)**2 
 
-        # --- 1. FILTROWANIE ---
         active_enemies = [e for e in enemy_manager.enemies if not e.is_dead and 
                           (e.pos - player_pos).length_squared() < active_dist_sq]
-        
         active_asteroids = [a for a in asteroid_manager.asteroids if 
                             (a.pos - player_pos).length_squared() < active_dist_sq]
 
-        # --- 2. KOLIZJE POCISKÓW ---
         for shot in shoot_obj.shots[:]:
             if shot.get("is_exploding"): continue
             shot_pos = shot["pos"]
             shot_hit = False
             
+            # 1. Kolizja z asteroidami (zawsze niszczy pocisk)
             for asteroid in active_asteroids:
                 if (shot_pos - asteroid.pos).length_squared() < asteroid.radius**2:
                     shot_hit = True
                     break
-            if shot_hit: self._process_shot_impact(shot, shoot_obj); continue
+            if shot_hit: 
+                self._process_shot_impact(shot, shoot_obj)
+                continue
 
-            if (shot_pos - player_pos).length_squared() < 35**2:
-                if shot.get("is_enemy_shot", False):
+            # 2. Kolizja z graczem (tylko pociski wrogów)
+            if shot.get("is_enemy_shot"):
+                if (shot_pos - player_pos).length_squared() < 35**2:
                     shot_hit = True
                     if not battle.shield_active: 
                         player.hp -= shot["damage"]
                     else:
                         if not player.is_destroyed:
                             self.music_obj.play("images/audio/kenney_sci-fi-sounds/forceField_001.wav", 0.25)
-                    if player.hp <= 0: return True
+                    if player.hp <= 0: return True # Game Over
 
-            if shot_hit: self._process_shot_impact(shot, shoot_obj); continue
+            if shot_hit: 
+                self._process_shot_impact(shot, shoot_obj)
+                continue
 
+            # 3. Kolizja z wrogami
             for enemy in active_enemies:
-                if (shot_pos - enemy.pos).length_squared() < 55**2:
-                    enemy.hp -= shot["damage"]
-                    shot_hit = True
-                    if enemy.hp <= 0: enemy.death()
-                    break
+                # Gracz może trafić każdego wroga. 
+                # Wróg może trafić innego wroga (ale nie samego siebie).
+                is_own_shot = shot.get("is_enemy_shot") and shot.get("enemy_id") == enemy.id
+                
+                if not is_own_shot:
+                    if (shot_pos - enemy.pos).length_squared() < 55**2:
+                        enemy.hp -= shot["damage"]
+                        shot_hit = True
+                        if enemy.hp <= 0:
+                            enemy.death()
+                        break # Trafił jednego, przerywamy pętlę wrogów
 
-            if shot_hit: self._process_shot_impact(shot, shoot_obj); continue
+            if shot_hit: 
+                self._process_shot_impact(shot, shoot_obj)
+                continue
 
         # --- 3. KOLIZJE STATKÓW ---
         

@@ -7,7 +7,8 @@
             "accel": 0.2,
             "boost_speed": 22.0,
             "boost_accel": 0.8,
-            "weapon_set": 1
+            "laser": 1,
+            "rocket": 1
         },
         "fighter": {
             "image_path": "images/Enemies/enemyBlack2.png",
@@ -16,7 +17,8 @@
             "accel": 0.15,
             "boost_speed": 18.0,
             "boost_accel": 0.6,
-            "weapon_set": 1
+            "laser": 2,
+            "rocket": 2
         },
         "bomber": {
             "image_path": "images/Enemies/enemyBlack3.png",
@@ -25,7 +27,8 @@
             "accel": 0.08,
             "boost_speed": 10.0,
             "boost_accel": 0.3,
-            "weapon_set": 2
+            "laser": 3,
+            "rocket": 3
         }
     }
 }

@@ -3,6 +3,7 @@ import math
 import random
 import json
 from typing import TYPE_CHECKING
+import random
 
 if TYPE_CHECKING:
     from music import MusicManager
@@ -11,7 +12,6 @@ if TYPE_CHECKING:
     from space_ship import SpaceShip
 
 class Debris:
-    """Klasa reprezentująca pojedynczy odłamek zniszczonego statku."""
     def __init__(self, pos: pygame.math.Vector2, velocity: pygame.math.Vector2, color: tuple | list):
         self.pos = pygame.math.Vector2(pos)
         self.velocity = velocity + pygame.math.Vector2(random.uniform(-4, 4), random.uniform(-4, 4))
@@ -33,7 +33,6 @@ class Debris:
         alpha = int(self.life * 255)
         s = self.size
         rect = pygame.Rect(self.pos.x - camera_x - s//2, self.pos.y - camera_y - s//2, s, s)
-        # Tworzymy tymczasowy surface dla przezroczystości odłamków
         surf = pygame.Surface((s, s), pygame.SRCALPHA)
         surf.fill((*self.color, alpha))
         window.blit(surf, rect)
@@ -49,9 +48,8 @@ class Enemy:
         self.player_ref = player_ref
         self.music_obj = music_obj
         self.shoot_obj = shoot_obj
-        self.asteroid_manager = asteroid_manager 
+        self.asteroid_manager = asteroid_manager
 
-        # Parametry z JSON
         self.hp = config["hp"]
         self.normal_speed_max = config["speed"]
         self.normal_accel = config["accel"]
@@ -78,13 +76,14 @@ class Enemy:
         self.boost_max_duration = 3.5
         self.boost_cooldown_time = 5.0
 
-        self.trail_points = [] 
+        self.trail_points = []
         self.is_thrusting = False
 
-        self.active_set = weapon_data["active_set"]
-        self.weapon_info = weapon_data["weapon_info"]
-        self.weapon_cooldown = self.weapon_info[3]
-        self.weapon_timer = self.weapon_cooldown
+        self.laser_info = weapon_data["laser"]
+        self.rocket_info = weapon_data["rocket"]
+        self.weapon_timer = 0.0
+
+        self.id = random.randint(0,100_000)
 
     def death(self):
         if not self.is_dead:
@@ -109,12 +108,11 @@ class Enemy:
             self.boost_timer -= dt
             if self.boost_timer <= 0: self.is_boosting = False
 
-        # AI Logic
         dir_to_player = (self.player_ref.player_pos - self.pos)
         dist_to_player = dir_to_player.length() or 1
         
         avoidance_vector = pygame.math.Vector2(0, 0)
-        danger_imminent = False 
+        danger_imminent = False
         
         for asteroid in self.asteroid_manager.asteroids:
             dist_to_ast = self.pos.distance_to(asteroid.pos)
@@ -132,9 +130,10 @@ class Enemy:
         is_near_border = dist_from_center > (self.manager.world_radius - 600)
         target_dir = -self.pos if is_near_border else dir_to_player
         combined_dir = target_dir.normalize()
+        
         if avoidance_vector.length() > 0:
             combined_dir = (combined_dir + avoidance_vector).normalize()
-            self.is_thrusting = True 
+            self.is_thrusting = True
         else:
             self.is_thrusting = dist_to_player > 380
 
@@ -179,28 +178,42 @@ class Enemy:
             p["life"] -= 1.0
             if p["life"] <= 0: self.trail_points.remove(p)
 
+        # LOGIKA STRZELANIA - POPRAWIONA
         self.weapon_timer += dt
-        if abs(angle_diff) < 20 and dist_to_player < 900 and not danger_imminent:
-            if self.weapon_timer >= self.weapon_cooldown:
-                self.shoot()
+        # Zasięg zwiększony do 2000 px, żeby rakiety miały sens
+        if abs(angle_diff) < 25 and dist_to_player < 2000 and not danger_imminent:
+            # Dystans przełączania: powyżej 450 rakiety, poniżej lasery
+            if dist_to_player < 750:
+                current_weapon = self.rocket_info
+                is_rocket = True
+            else:
+                current_weapon = self.laser_info
+                is_rocket = False
+            
+            if self.weapon_timer >= current_weapon[3]:
+                self.shoot(current_weapon, is_rocket)
 
-    def shoot(self):
+    def shoot(self, weapon_info: list, is_rocket: bool):
         self.weapon_timer = 0.0
         rad = math.radians(-self.angle)
         direction = pygame.math.Vector2(math.cos(rad), math.sin(rad))
-        bullet_vel = self.velocity + (direction * self.weapon_info[1])
+        
+        # Prędkość wylotowa pocisku (weapon_info[1]) plus prędkość statku
+        bullet_vel = self.velocity + (direction * weapon_info[1])
         
         self.shoot_obj.create_missle({
             "pos": self.pos.copy(),
             "vel": bullet_vel,
-            "img": self.weapon_info[0],
-            "damage": self.weapon_info[2],
+            "img": weapon_info[0],
+            "damage": weapon_info[2],
             "dir": self.angle,
-            "rocket": (self.active_set == 2),
-            "is_enemy_shot": True
+            "rocket": is_rocket,
+            "is_enemy_shot": True,
+            "enemy_id": self.id
         })
+        
         if self.music_obj:
-            sfx = "images/audio/sfx_laser1.wav" if self.active_set == 1 else "images/audio/sfx_laser2.wav"
+            sfx = "images/audio/sfx_laser2.wav" if is_rocket else "images/audio/sfx_laser1.wav"
             self.music_obj.play(sfx, 0.3)
 
     def draw(self, window: pygame.Surface, camera_x: float, camera_y: float):
@@ -240,11 +253,9 @@ class EnemyManager:
         self.asteroid_manager = asteroid_manager
         self.enemies = []
 
-        # --- LOAD FROM JSON ---
-        self.ENEMY_TYPES = self._load_config("data_slownik.json")
-        self.ENEMY_TYPES = self.ENEMY_TYPES["enemy_types"]
+        config_data = self._load_config("data_slownik.json")
+        self.ENEMY_TYPES = config_data.get("enemy_types", {})
 
-        # --- PRE-CACHING ---
         self.ship_cache = {}
         self.ship_base_images = {}
         self._init_ship_cache()
@@ -259,9 +270,7 @@ class EnemyManager:
         try:
             with open(filename, 'r', encoding='utf-8') as f:
                 return json.load(f)
-        except Exception as e:
-            print(f"Error loading JSON: {e}")
-            return {}
+        except: return {}
 
     def _init_ship_cache(self):
         for name, config in self.ENEMY_TYPES.items():
@@ -291,13 +300,17 @@ class EnemyManager:
                 self.fire_cache[i].append(pygame.transform.rotate(frame, angle))
 
     def _init_weapons(self):
+        # [obrazek, prędkość wylotowa, obrażenia, cooldown]
         self.weapons_lasers = [
-            [self.ship_frames["images/Lasers/laserBlue12.png"], 60, 5, 0.1],
-            [self.ship_frames["images/Lasers/laserBlue13.png"], 65, 4, 0.4]
+            [self.ship_frames["images/Lasers/laserBlue12.png"], 60, 5,   0.2],
+            [self.ship_frames["images/Lasers/laserBlue13.png"], 65, 8,   0.4],
+            [self.ship_frames["images/Lasers/laserBlue14.png"], 70, 12,  0.5]
         ]
+        # PRĘDKOŚCI RAKIET ZWIĘKSZONE Z 1.5 NA 15-20
         self.weapons_rockets = [
-            [self.ship_frames["images/Missiles/spaceMissiles_001.png"], 1.5, 5, 3],
-            [self.ship_frames["images/Missiles/spaceMissiles_004.png"], 1.5, 10, 3]
+            [self.ship_frames["images/Missiles/spaceMissiles_001.png"], 15, 20,  3.0],
+            [self.ship_frames["images/Missiles/spaceMissiles_004.png"], 17, 30,  3.5],
+            [self.ship_frames["images/Missiles/spaceMissiles_010.png"], 20, 50,  4.0]
         ]
 
     def update(self, dt: float):
@@ -311,11 +324,13 @@ class EnemyManager:
                 type_name = random.choice(list(self.ENEMY_TYPES.keys()))
                 config = self.ENEMY_TYPES[type_name]
                 
-                active_set = config["weapon_set"]
-                w_list = self.weapons_lasers if active_set == 1 else self.weapons_rockets
-                selected_weapon = random.choice(w_list)
-                
-                weapon_data = {"active_set": active_set, "weapon_info": selected_weapon}
+                l_idx = min(config.get("laser", 1) - 1, len(self.weapons_lasers)-1)
+                r_idx = min(config.get("rocket", 1) - 1, len(self.weapons_rockets)-1)
+
+                weapon_data = {
+                    "laser": self.weapons_lasers[max(0, l_idx)],
+                    "rocket": self.weapons_rockets[max(0, r_idx)]
+                }
 
                 self.enemies.append(Enemy(type_name, config, self.ship_frames, self.player_ref, 
                                         self.music_obj, self.shoot_obj, self, spawn_pos, 
