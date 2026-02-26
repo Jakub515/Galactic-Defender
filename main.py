@@ -34,8 +34,9 @@ class Game():
         self.FADE_ZONE = 2000
         self.shoot_obj = shoot.Shoot(loaded_space_frames)
         self.camera = Camera(cxx, cyy, lerp_factor=0.08, offset_scalar=15)
-        self.player = space_ship.SpaceShip(loaded_space_frames, audio_files, cxx, cyy, [0, 0], music_obj, self.shoot_obj)
-        self.player_shoot = space_ship.Battle(self.player,loaded_space_frames,audio_files,cxx,cyy,[0,0],music_obj,self.shoot_obj)
+        self.player_parameters = space_ship.Parameters(loaded_space_frames)
+        self.player = space_ship.SpaceShip(loaded_space_frames, audio_files, cxx, cyy, [0, 0], music_obj, self.shoot_obj,self.player_parameters)
+        self.player_shoot = space_ship.Battle(self.player,loaded_space_frames,audio_files,cxx,cyy,[0,0],music_obj,self.shoot_obj,self.player_parameters)
 
         self.pola_asteroid = [
             {"pos": pygame.math.Vector2(0, 0), "radius": 22000, "count": 250},

@@ -100,7 +100,7 @@ class Enemy:
                 self.debris_list.append(Debris(self.pos, self.velocity, random.choice(colors)))
 
     def update(self, dt: float):
-        if self.hp <= 0 and not self.is_dead:
+        if (self.hp <= 0) and not self.is_dead:
            self.death()
 
         if self.is_dead:
@@ -226,7 +226,7 @@ class Enemy:
             for d in self.debris_list: d.draw(window, camera_x, camera_y)
             return
             
-        for p in self.trail_points:
+        """for p in self.trail_points:
             ratio = p["life"] / p["max_life"]
             sz = (int(p["size"][0] * ratio), int(p["size"][1] * ratio))
             if sz[0] > 1 and sz[1] > 1:
@@ -239,7 +239,7 @@ class Enemy:
             f_rot = self.manager.fire_cache[int(self.fire_anim_index)][angle_idx]
             d_off = -32 if self.is_boosting else -20
             f_off = pygame.math.Vector2(d_off, 0).rotate(-self.angle)
-            window.blit(f_rot, f_rot.get_rect(center=(int(self.pos.x - camera_x + f_off.x), int(self.pos.y - camera_y + f_off.y))))
+            window.blit(f_rot, f_rot.get_rect(center=(int(self.pos.x - camera_x + f_off.x), int(self.pos.y - camera_y + f_off.y))))"""
             
         angle_idx = int(self.angle % 360)
         rotated_ship = self.manager.ship_cache[self.type_name][angle_idx]

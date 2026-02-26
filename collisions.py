@@ -96,7 +96,7 @@ class Collision():
         # Gracz vs Asteroidy
         for asteroid in active_asteroids:
             if (player_pos - asteroid.pos).length_squared() < (40 + asteroid.radius)**2:
-                r1, m1 = self.get_masked_data(player.actual_frame, player_pos, player.angle, id(player))
+                r1, m1 = self.get_masked_data(player.ship_rot, player_pos, player.angle, id(player))
                 r2, m2 = self.get_masked_data(asteroid.original_image, asteroid.pos, asteroid.angle, id(asteroid))
                 if m1.overlap(m2, (r2.left - r1.left, r2.top - r1.top)):
                     self._handle_asteroid_impact(player, asteroid, damage=15)
@@ -121,7 +121,7 @@ class Collision():
             for enemy in active_enemies:
                 if (player_pos - enemy.pos).length_squared() < 95**2:
                     enemy_base_img = enemy_manager.ship_base_images[enemy.type_name]
-                    r1, m1 = self.get_masked_data(player.actual_frame, player_pos, player.angle, id(player))
+                    r1, m1 = self.get_masked_data(player.ship_rot, player_pos, player.angle, id(player))
                     r2, m2 = self.get_masked_data(enemy_base_img, enemy.pos, enemy.angle, id(enemy))
                     if m1.overlap(m2, (r2.left - r1.left, r2.top - r1.top)):
                         self._handle_ship_collision(player, enemy)
@@ -173,6 +173,7 @@ class Collision():
         else:
             ship.pos += push_dir * 12
             ship.hp = 0
+            ship.death()
         ship.velocity *= -0.5
 
     def _handle_ship_collision(self, player, enemy):

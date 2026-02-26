@@ -8,18 +8,76 @@ if TYPE_CHECKING:
     from music import MusicManager
     from shoot import Shoot
 
+class Parameters:
+    def __init__(self, ship_frames):
+        # --- STATYSTYKI ŻYCIA ---
+        self.hp = 100
+        self.max_hp = 100
+        self.hp_reg_speed = 1
+
+        # --- FIZYKA I PRĘDKOŚĆ ---
+        self.max_speed = 10.0
+        self.boost_speed = 22.0
+        self.thrust_power = 0.4
+        self.braking_force = 0.92
+        self.linear_friction = 0.985
+
+        self.max_switch_time = 2.5 # czas przełączenia między laserami a rakietami
+        
+        # --- TARCZA (OSŁONY) ---
+        self.shield_max_timer = 250      # Czas trwania w klatkach
+        self.max_shield_cooldown = 1.0   # Czas odnowienia w sekundach
+        
+        # --- BOOSTER ---
+        self.max_boost_cooldown = 50.0   # Pojemność paska
+        self.boost_drain_rate = 1.5      # Szybkość zużycia (dt * x)
+        self.boost_regen_rate = 0.8      # Szybkość regeneracji (dt * x)
+
+        self.weapons = []
+        self.weapons_2 = []
+        self._load_weapons_from_config("player_slownik.json", ship_frames) #
+        
+    
+    def _load_weapons_from_config(self, filename: str, ship_frames: dict):
+        """Wczytuje definicje broni z sekcji player-weapon-data pliku JSON."""
+        try:
+            with open(filename, 'r', encoding='utf-8') as f:
+                config = json.load(f) #
+            
+            weapon_data = config.get("player-weapon-data", {}) #
+
+            # Wczytywanie laserów (Set 1)
+            lasers = weapon_data.get("lasers", {}) #
+            for key in sorted(lasers.keys(), key=lambda x: int(x.replace('laser', ''))): #
+                w = lasers[key]
+                img = ship_frames.get(w["path"]) #
+                if img:
+                    self.weapons.append([img, w["speed"], w["damage"], w["cooldown"]]) #
+
+            # Wczytywanie rakiet (Set 2)
+            rockets = weapon_data.get("rockets", {}) #
+            for key in sorted(rockets.keys(), key=lambda x: int(x.replace('rocket', ''))): #
+                w = rockets[key]
+                img = ship_frames.get(w["path"]) #
+                if img:
+                    self.weapons_2.append([img, w["speed"], w["damage"], w["cooldown"]]) #
+
+        except (FileNotFoundError, json.JSONDecodeError) as e:
+            raise Exception(f"Błąd ładowania broni gracza: {e}") from e
+        
+
 class Battle():
-    def __init__(self, player_main_class: "SpaceShip", ship_frames: dict, ship_audio_path:list|tuple, cxx:int, cyy:int, player_pos:list|tuple, music: "MusicManager", shoot_obj: "Shoot"):
+    def __init__(self, player_main_class: "SpaceShip", ship_frames: dict, ship_audio_path:list|tuple, cxx:int, cyy:int, player_pos:list|tuple, music: "MusicManager", shoot_obj: "Shoot", parameters: "Parameters"):
         self.shoot_obj = shoot_obj
         self.music_obj = music
         self.ship_frames = ship_frames
         self.ship_audio_path = ship_audio_path
         self.player_main_class = player_main_class
+        self.parameters = parameters
 
         # --- DYNAMICZNE WCZYTYWANIE BRONI ---
-        self.weapons = []
-        self.weapons_2 = []
-        self._load_weapons_from_config("player_slownik.json") #
+        self.weapons = self.parameters.weapons
+        self.weapons_2 = self.parameters.weapons_2
         
         # Inicjalizacja timerów na podstawie wczytanych danych (indeks 3 to cooldown)
         self.weapon_timers = [w[3] for w in self.weapons] #
@@ -29,7 +87,7 @@ class Battle():
         self.active_set = 1
         self.want_to_shoot = False
         self.switch_cooldown = 0.0
-        self.max_switch_time = 2.5 
+        self.max_switch_time = self.parameters.max_switch_time
 
         # --- OSŁONY I COOLDOWN ---
         try:
@@ -43,38 +101,12 @@ class Battle():
             
         self.shield_active = False
         self.shield_timer = 0 
-        self.shield_max_timer = 250
+        self.shield_max_timer = self.parameters.shield_max_timer
         self.shield_angle = 0 
         self.shield_cooldown = 0.0
-        self.max_shield_cooldown = 1.0
+        self.max_shield_cooldown = self.parameters.max_shield_cooldown
 
-    def _load_weapons_from_config(self, filename: str):
-        """Wczytuje definicje broni z sekcji player-weapon-data pliku JSON."""
-        try:
-            with open(filename, 'r', encoding='utf-8') as f:
-                config = json.load(f) #
-            
-            weapon_data = config.get("player-weapon-data", {}) #
-
-            # Wczytywanie laserów (Set 1)
-            lasers = weapon_data.get("lasers", {}) #
-            for key in sorted(lasers.keys(), key=lambda x: int(x.replace('laser', ''))): #
-                w = lasers[key]
-                img = self.ship_frames.get(w["path"]) #
-                if img:
-                    self.weapons.append([img, w["speed"], w["damage"], w["cooldown"]]) #
-
-            # Wczytywanie rakiet (Set 2)
-            rockets = weapon_data.get("rockets", {}) #
-            for key in sorted(rockets.keys(), key=lambda x: int(x.replace('rocket', ''))): #
-                w = rockets[key]
-                img = self.ship_frames.get(w["path"]) #
-                if img:
-                    self.weapons_2.append([img, w["speed"], w["damage"], w["cooldown"]]) #
-
-        except (FileNotFoundError, json.JSONDecodeError) as e:
-            raise Exception(f"Błąd ładowania broni gracza: {e}") from e
-
+    
     def fire(self, active:bool): 
         if not self.player_main_class.is_destroyed: self.want_to_shoot = active
 
@@ -153,11 +185,12 @@ class Battle():
         return s
 
 class SpaceShip():
-    def __init__(self, ship_frames: dict, ship_audio_path:list|tuple, cxx:int, cyy:int, player_pos:list|tuple, music: "MusicManager", shoot_obj: "Shoot"):
+    def __init__(self, ship_frames: dict, ship_audio_path:list|tuple, cxx:int, cyy:int, player_pos:list|tuple, music: "MusicManager", shoot_obj: "Shoot", parameters: "Parameters"):
         self.shoot_obj = shoot_obj
         self.music_obj = music
         self.ship_frames = ship_frames
         self.ship_audio_path = ship_audio_path
+        self.parameters = parameters
         
         self.is_destroyed = False
         self.debris_particles = []
@@ -193,22 +226,30 @@ class SpaceShip():
         self.angular_velocity = 0                   
         self.angular_acceleration = 0.5            
         self.angular_friction = 0.90               
-        self.max_angular_velocity = 7.0            
-        self.thrust_power = 0.4                    
-        self.max_speed = 10.0                      
-        self.boost_speed = 22.0  
-        self.linear_friction = 0.985               
-        self.braking_force = 0.92                  
+        self.max_angular_velocity = 7.0  
+
+        self.thrust_power = self.parameters.thrust_power               
+        self.max_speed = self.parameters.max_speed               
+        self.boost_speed = self.parameters.boost_speed
+        self.linear_friction = self.parameters.linear_friction              
+        self.braking_force = self.parameters.braking_force      
+                    
         self.speed_decay = 0.96     
         self.drift_control = 0.05
         self.forward_dir = pygame.math.Vector2(0,0)
 
         # NOWE: System przegrzewania boosta
         self.boost_cooldown = 0.0
-        self.max_boost_cooldown = 50.0
+        self.max_boost_cooldown = self.parameters.max_boost_cooldown
         self.is_boost_ready = True
 
-        self.hp = 100        
+        self.hp = self.parameters.hp  
+        self.max_hp = self.parameters.max_hp
+        self.hp_timer = 0.0          # Licznik czasu
+        self.hp_interval = 1.0       # Co ile sekund ma wystąpić akcja (1.0 = 1 sekunda)
+        self.hp_reg_speed = self.parameters.hp_reg_speed
+
+        self.ship_rot = self.actual_frame
 
     def destroy_cause_collision(self):
         if self.is_destroyed: return
@@ -240,6 +281,7 @@ class SpaceShip():
         if not self.is_destroyed: self.is_braking = active
 
     def update(self, dt:float):
+        self.hp_timer += dt
         if self.hp <= 0:
             self.hp = 0
             self.destroy_cause_collision()
@@ -251,6 +293,10 @@ class SpaceShip():
                 d["pos"] += d["vel"]; d["angle"] += d["rot_speed"]; d["life"] -= 1
             self.debris_particles = [d for d in self.debris_particles if d["life"] > 0]
             return [self.player_pos.x, self.player_pos.y]
+        if (self.hp_timer >= self.hp_interval) and not self.is_destroyed:
+            if self.hp < self.max_hp:
+                self.hp += self.hp_reg_speed
+            self.hp_timer -= self.hp_interval
 
         # Logika Boostera
         if self.is_thrusting and self.is_boosting and self.is_boost_ready:
@@ -332,5 +378,5 @@ class SpaceShip():
             f_off = pygame.math.Vector2(-35, 0).rotate(-self.angle)
             window.blit(f_rot, f_rot.get_rect(center=(int(draw_x + f_off.x), int(draw_y + f_off.y))))
 
-        ship_rot = pygame.transform.rotate(self.actual_frame, self.angle)
-        window.blit(ship_rot, ship_rot.get_rect(center=(draw_x, draw_y)))
+        self.ship_rot = pygame.transform.rotate(self.actual_frame, self.angle)
+        window.blit(self.ship_rot, self.ship_rot.get_rect(center=(draw_x, draw_y)))

@@ -3,30 +3,30 @@
         "scout": {
             "image_path": "images/Enemies/enemyBlack1.png",
             "hp": 30,
-            "speed": 9.5,
-            "accel": 0.2,
+            "speed": 9.1,
+            "accel": 0.9,
             "boost_speed": 22.0,
-            "boost_accel": 0.8,
+            "boost_accel": 1.8,
             "laser": 1,
             "rocket": 1
         },
         "fighter": {
             "image_path": "images/Enemies/enemyBlack2.png",
             "hp": 50,
-            "speed": 7.5,
-            "accel": 0.15,
-            "boost_speed": 18.0,
-            "boost_accel": 0.6,
+            "speed": 9.1,
+            "accel": 0.9,
+            "boost_speed": 22.0,
+            "boost_accel": 1.8,
             "laser": 2,
             "rocket": 2
         },
         "bomber": {
             "image_path": "images/Enemies/enemyBlack3.png",
             "hp": 120,
-            "speed": 4.5,
-            "accel": 0.08,
-            "boost_speed": 10.0,
-            "boost_accel": 0.3,
+            "speed": 9.1,
+            "accel": 0.9,
+            "boost_speed": 22.0,
+            "boost_accel": 1.8,
             "laser": 3,
             "rocket": 3
         }
