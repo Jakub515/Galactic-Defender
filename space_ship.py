@@ -1,6 +1,7 @@
 import pygame
 import math
 import random
+import json  # Dodano import json
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -15,33 +16,18 @@ class Battle():
         self.ship_audio_path = ship_audio_path
         self.player_main_class = player_main_class
 
-        # --- SYSTEM BRONI ---
-        self.weapons = [
-            [self.ship_frames["images/Lasers/laserBlue12.png"], 60, 5,   0.1],
-            [self.ship_frames["images/Lasers/laserBlue13.png"], 65, 4,   0.4],
-            [self.ship_frames["images/Lasers/laserBlue14.png"], 70, 3,   0.3],
-            [self.ship_frames["images/Lasers/laserBlue15.png"], 75, 2,   0.2],
-            [self.ship_frames["images/Lasers/laserBlue16.png"], 80, 1,   0.1]
-        ]
-        self.weapons_2 = [
-            [self.ship_frames["images/Missiles/spaceMissiles_001.png"], 1.5, 5,   3],
-            [self.ship_frames["images/Missiles/spaceMissiles_004.png"], 1.5, 10,  3],
-            [self.ship_frames["images/Missiles/spaceMissiles_007.png"], 1.5, 15,  3],
-            [self.ship_frames["images/Missiles/spaceMissiles_010.png"], 1.5, 20,  3],
-            [self.ship_frames["images/Missiles/spaceMissiles_013.png"], 1.5, 25,  3],
-            [self.ship_frames["images/Missiles/spaceMissiles_016.png"], 1.5, 30,  3],
-            [self.ship_frames["images/Missiles/spaceMissiles_019.png"], 1.5, 35,  3],
-            [self.ship_frames["images/Missiles/spaceMissiles_022.png"], 1.5, 40,  3],
-            [self.ship_frames["images/Missiles/spaceMissiles_025.png"], 1.5, 45,  3]
-        ]
+        # --- DYNAMICZNE WCZYTYWANIE BRONI ---
+        self.weapons = []
+        self.weapons_2 = []
+        self._load_weapons_from_config("player_slownik.json") #
         
-        self.weapon_timers = [w[3] for w in self.weapons]
-        self.weapon_timers_2 = [w[3] for w in self.weapons_2]
+        # Inicjalizacja timerów na podstawie wczytanych danych (indeks 3 to cooldown)
+        self.weapon_timers = [w[3] for w in self.weapons] #
+        self.weapon_timers_2 = [w[3] for w in self.weapons_2] #
         
         self.current_weapon = 0
         self.active_set = 1
         self.want_to_shoot = False
-
         self.switch_cooldown = 0.0
         self.max_switch_time = 2.5 
 
@@ -60,7 +46,34 @@ class Battle():
         self.shield_max_timer = 250
         self.shield_angle = 0 
         self.shield_cooldown = 0.0
-        self.max_shield_cooldown = 1.0 # 10 sekund ładowania
+        self.max_shield_cooldown = 1.0
+
+    def _load_weapons_from_config(self, filename: str):
+        """Wczytuje definicje broni z sekcji player-weapon-data pliku JSON."""
+        try:
+            with open(filename, 'r', encoding='utf-8') as f:
+                config = json.load(f) #
+            
+            weapon_data = config.get("player-weapon-data", {}) #
+
+            # Wczytywanie laserów (Set 1)
+            lasers = weapon_data.get("lasers", {}) #
+            for key in sorted(lasers.keys(), key=lambda x: int(x.replace('laser', ''))): #
+                w = lasers[key]
+                img = self.ship_frames.get(w["path"]) #
+                if img:
+                    self.weapons.append([img, w["speed"], w["damage"], w["cooldown"]]) #
+
+            # Wczytywanie rakiet (Set 2)
+            rockets = weapon_data.get("rockets", {}) #
+            for key in sorted(rockets.keys(), key=lambda x: int(x.replace('rocket', ''))): #
+                w = rockets[key]
+                img = self.ship_frames.get(w["path"]) #
+                if img:
+                    self.weapons_2.append([img, w["speed"], w["damage"], w["cooldown"]]) #
+
+        except (FileNotFoundError, json.JSONDecodeError) as e:
+            raise Exception(f"Błąd ładowania broni gracza: {e}") from e
 
     def fire(self, active:bool): 
         if not self.player_main_class.is_destroyed: self.want_to_shoot = active

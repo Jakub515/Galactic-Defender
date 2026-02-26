@@ -3,7 +3,6 @@ import math
 import random
 import json
 from typing import TYPE_CHECKING
-import random
 
 if TYPE_CHECKING:
     from music import MusicManager
@@ -37,6 +36,12 @@ class Debris:
         surf.fill((*self.color, alpha))
         window.blit(surf, rect)
 
+class IDGenerator:
+    _counter = 999
+    @classmethod
+    def get_new_id(cls):
+        cls._counter += 1
+        return cls._counter
 class Enemy:
     def __init__(self, type_name: str, config: dict, ship_frames: dict, player_ref: "SpaceShip", 
                  music_obj: "MusicManager", shoot_obj: "Shoot", enemy_manager: "EnemyManager", 
@@ -83,7 +88,7 @@ class Enemy:
         self.rocket_info = weapon_data["rocket"]
         self.weapon_timer = 0.0
 
-        self.id = random.randint(0,100_000)
+        self.id = IDGenerator.get_new_id()
 
     def death(self):
         if not self.is_dead:
@@ -253,9 +258,11 @@ class EnemyManager:
         self.asteroid_manager = asteroid_manager
         self.enemies = []
 
-        config_data = self._load_config("data_slownik.json")
-        self.ENEMY_TYPES = config_data.get("enemy_types", {})
+        # --- ŁADOWANIE KONFIGURACJI ---
+        self.config_all = self._load_config("enemie_slownik.json")
+        self.ENEMY_TYPES = self.config_all.get("enemy_types", {})
 
+        # --- CACHE GRAFIKI ---
         self.ship_cache = {}
         self.ship_base_images = {}
         self._init_ship_cache()
@@ -264,28 +271,38 @@ class EnemyManager:
         self.fire_cache = [[] for _ in range(len(self.blue_fire_frames))]
         self._init_fire_cache()
 
+        # --- SYSTEM BRONI Z JSON ---
+        self.weapons_lasers = []
+        self.weapons_rockets = []
         self._init_weapons()
 
-    def _load_config(self, filename):
+    def _load_config(self, filename: str) -> dict:
+        """Wczytuje słownik z pliku JSON."""
         try:
             with open(filename, 'r', encoding='utf-8') as f:
                 return json.load(f)
-        except: return {}
+        except Exception as e:
+            print(f"Błąd krytyczny EnemyManager: Nie można wczytać {filename}. {e}")
+            return {}
 
     def _init_ship_cache(self):
+        """Przygotowuje obrócone klatki statków dla każdego typu."""
         for name, config in self.ENEMY_TYPES.items():
             path = config["image_path"]
             if path in self.ship_frames:
+                # Obrót o -90, bo grafiki Kenneya domyślnie patrzą w górę
                 base_img = pygame.transform.rotate(self.ship_frames[path], -90)
                 self.ship_base_images[name] = base_img
                 self.ship_cache[name] = [pygame.transform.rotate(base_img, angle) for angle in range(360)]
 
     def _init_fire_frames(self):
+        """Przygotowuje animację ognia (zmienioną na niebieską)."""
         temp_frames = []
         fire_paths = [f"images/dym/Explosion/explosion0{i}.png" for i in range(9)]
         for path in fire_paths:
             if path in self.ship_frames:
                 surf = self.ship_frames[path].copy().convert_alpha()
+                # Zamiana kanałów R i B dla niebieskiego efektu
                 w, h = surf.get_size()
                 for x in range(w):
                     for y in range(h):
@@ -295,35 +312,49 @@ class EnemyManager:
         return temp_frames
 
     def _init_fire_cache(self):
+        """Cache'uje rotację ognia, by nie liczyć jej co klatkę."""
         for i, frame in enumerate(self.blue_fire_frames):
             for angle in range(360):
                 self.fire_cache[i].append(pygame.transform.rotate(frame, angle))
 
     def _init_weapons(self):
-        # [obrazek, prędkość wylotowa, obrażenia, cooldown]
-        self.weapons_lasers = [
-            [self.ship_frames["images/Lasers/laserBlue12.png"], 60, 5,   0.2],
-            [self.ship_frames["images/Lasers/laserBlue13.png"], 65, 8,   0.4],
-            [self.ship_frames["images/Lasers/laserBlue14.png"], 70, 12,  0.5]
-        ]
-        # PRĘDKOŚCI RAKIET ZWIĘKSZONE Z 1.5 NA 15-20
-        self.weapons_rockets = [
-            [self.ship_frames["images/Missiles/spaceMissiles_001.png"], 15, 20,  3.0],
-            [self.ship_frames["images/Missiles/spaceMissiles_004.png"], 17, 30,  3.5],
-            [self.ship_frames["images/Missiles/spaceMissiles_010.png"], 20, 50,  4.0]
-        ]
+        """Dynamicznie buduje bazy broni z sekcji 'enemy-weapon-data'."""
+        weapon_data = self.config_all.get("enemy-weapon-data", {})
+        
+        # 1. Ładowanie Laserów
+        lasers_dict = weapon_data.get("lasers", {})
+        # Sortowanie laser1, laser2... zapewnia poprawną kolejność indeksów
+        for key in sorted(lasers_dict.keys(), key=lambda x: int(x.replace('laser', ''))):
+            w = lasers_dict[key]
+            img = self.ship_frames.get(w["path"])
+            if img:
+                # Format: [Surface, speed, damage, cooldown]
+                self.weapons_lasers.append([img, w["speed"], w["damage"], w["cooldown"]])
+
+        # 2. Ładowanie Rakiet
+        rockets_dict = weapon_data.get("rockets", {})
+        for key in sorted(rockets_dict.keys(), key=lambda x: int(x.replace('rocket', ''))):
+            w = rockets_dict[key]
+            img = self.ship_frames.get(w["path"])
+            if img:
+                self.weapons_rockets.append([img, w["speed"], w["damage"], w["cooldown"]])
 
     def update(self, dt: float):
+        """Zarządza spawnem i aktualizacją przeciwników."""
         living = [e for e in self.enemies if not e.is_dead]
+        
+        # Spawn nowego przeciwnika, jeśli jest miejsce
         if len(living) < self.max_enemies:
             angle = random.uniform(0, 2 * math.pi)
             dist = random.uniform(1100, 1400)
             spawn_pos = self.player_ref.player_pos + pygame.math.Vector2(math.cos(angle)*dist, math.sin(angle)*dist)
             
+            # Sprawdzenie granic świata
             if spawn_pos.length() < self.world_radius - 250:
                 type_name = random.choice(list(self.ENEMY_TYPES.keys()))
                 config = self.ENEMY_TYPES[type_name]
                 
+                # Bezpieczne pobieranie indeksów broni
                 l_idx = min(config.get("laser", 1) - 1, len(self.weapons_lasers)-1)
                 r_idx = min(config.get("rocket", 1) - 1, len(self.weapons_rockets)-1)
 
@@ -336,11 +367,14 @@ class EnemyManager:
                                         self.music_obj, self.shoot_obj, self, spawn_pos, 
                                         self.asteroid_manager, self.blue_fire_frames, weapon_data))
 
+        # Aktualizacja wszystkich (żywych i w trakcie animacji śmierci)
         for enemy in self.enemies[:]:
             enemy.update(dt)
+            # Usuń, gdy zginął i animacja gruzu dobiegła końca
             if enemy.is_dead and not enemy.debris_list:
                 self.enemies.remove(enemy)
 
     def draw(self, window: pygame.Surface, camera_x: float, camera_y: float):
+        """Renderowanie wszystkich przeciwników."""
         for enemy in self.enemies:
             enemy.draw(window, camera_x, camera_y)

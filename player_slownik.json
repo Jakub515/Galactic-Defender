@@ -1,0 +1,92 @@
+{
+    "player-weapon-data": {
+        "lasers": {
+            "laser1": {
+                "path": "images/Lasers/laserBlue12.png",
+                "speed": 60,
+                "damage": 5,
+                "cooldown": 0.1
+            },
+            "laser2": {
+                "path": "images/Lasers/laserBlue13.png",
+                "speed": 65,
+                "damage": 1,
+                "cooldown": 0.4
+            },
+            "laser3": {
+                "path": "images/Lasers/laserBlue14.png",
+                "speed": 70,
+                "damage": 1,
+                "cooldown": 0.3
+            },
+            "laser4": {
+                "path": "images/Lasers/laserBlue15.png",
+                "speed": 75,
+                "damage": 2,
+                "cooldown": 0.2
+            },
+            "laser5": {
+                "path": "images/Lasers/laserBlue16.png",
+                "speed": 80,
+                "damage": 1,
+                "cooldown": 0.1
+            }
+        },
+        "rockets": {
+            "rocket1": {
+                "path": "images/Missiles/spaceMissiles_001.png",
+                "speed": 1.5,
+                "damage": 5,
+                "cooldown": 3.0
+            },
+            "rocket2": {
+                "path": "images/Missiles/spaceMissiles_004.png",
+                "speed": 1.5,
+                "damage": 10,
+                "cooldown": 3.0
+            },
+            "rocket3": {
+                "path": "images/Missiles/spaceMissiles_007.png",
+                "speed": 1.5,
+                "damage": 15,
+                "cooldown": 3.0
+            },
+            "rocket4": {
+                "path": "images/Missiles/spaceMissiles_010.png",
+                "speed": 1.5,
+                "damage": 20,
+                "cooldown": 3.0
+            },
+            "rocket5": {
+                "path": "images/Missiles/spaceMissiles_013.png",
+                "speed": 1.5,
+                "damage": 25,
+                "cooldown": 3.0
+            },
+            "rocket6": {
+                "path": "images/Missiles/spaceMissiles_016.png",
+                "speed": 1.5,
+                "damage": 30,
+                "cooldown": 3.0
+            },
+            "rocket7": {
+                "path": "images/Missiles/spaceMissiles_019.png",
+                "speed": 1.5,
+                "damage": 35,
+                "cooldown": 3.0
+            },
+            "rocket8": {
+                "path": "images/Missiles/spaceMissiles_022.png",
+                "speed": 1.5,
+                "damage": 40,
+                "cooldown": 3.0
+            },
+            "rocket9": {
+                "path": "images/Missiles/spaceMissiles_025.png",
+                "speed": 1.5,
+                "damage": 45,
+                "cooldown": 3.0
+            }
+        }
+    }
+}
