@@ -35,7 +35,7 @@
         "rockets": {
             "rocket1": {
                 "path": "images/Missiles/spaceMissiles_001.png",
-                "speed": 1.5,
+                "speed": 10.5,
                 "damage": 5,
                 "cooldown": 3.0
             },

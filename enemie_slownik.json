@@ -3,9 +3,9 @@
         "scout": {
             "image_path": "images/Enemies/enemyBlack1.png",
             "hp": 30,
-            "speed": 9.1,
+            "speed": 1,
             "accel": 0.9,
-            "boost_speed": 22.0,
+            "boost_speed": 2.0,
             "boost_accel": 1.8,
             "laser": [1,2,3],
             "rocket": [1,2]
@@ -13,9 +13,9 @@
         "fighter": {
             "image_path": "images/Enemies/enemyBlack2.png",
             "hp": 50,
-            "speed": 9.1,
+            "speed": 1,
             "accel": 0.9,
-            "boost_speed": 22.0,
+            "boost_speed": 2.0,
             "boost_accel": 1.8,
             "laser": [2],
             "rocket": [4,5]
@@ -23,9 +23,9 @@
         "bomber": {
             "image_path": "images/Enemies/enemyBlack3.png",
             "hp": 120,
-            "speed": 9.1,
+            "speed": 1,
             "accel": 0.9,
-            "boost_speed": 22.0,
+            "boost_speed": 2.0,
             "boost_accel": 1.8,
             "laser": [3],
             "rocket": [7,8,9]

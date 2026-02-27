@@ -105,6 +105,7 @@ class Battle():
         self.shield_angle = 0 
         self.shield_cooldown = 0.0
         self.max_shield_cooldown = self.parameters.max_shield_cooldown
+        self.enemy_selected = None
 
     
     def fire(self, active:bool): 
@@ -151,12 +152,17 @@ class Battle():
                 "damage": w_data[2], 
                 "dir": self.player_main_class.angle,
                 "rocket": (self.active_set == 2),
-                "is_player_shooting": True
+                "is_player_shooting": True,
+                "destination": self.enemy_selected if (self.active_set == 2) else None,
+                "max-speed": 25
             })
             if self.music_obj:
                 self.music_obj.play("images/audio/sfx_laser1.wav", 0.7)
 
-    def update(self, dt:float):
+    def update(self, dt:float, get_enemy_selected: int|None):
+        if type(get_enemy_selected) == int:
+            self.enemy_selected = get_enemy_selected
+
         if self.switch_cooldown > 0:
             self.switch_cooldown -= dt
 

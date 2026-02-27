@@ -3,7 +3,6 @@ import math
 import itertools
 from typing import TYPE_CHECKING
 
-
 if TYPE_CHECKING:
     from music import MusicManager
     from shoot import Shoot
@@ -13,14 +12,15 @@ if TYPE_CHECKING:
     from level_manager import LevelManager
 
 class Collision():
-    def __init__(self, mixer_obj: "MusicManager", cxx: int, cyy: int):
+    def __init__(self, mixer_obj: "MusicManager", cxx: int, cyy: int, enemy_manager: "EnemyManager"):
         self.music_obj = mixer_obj
         self._mask_cache = {}
         self.cxx = cxx
         self.cyy = cyy
+        self.enemy_manager = enemy_manager
 
     def get_masked_data(self, image: pygame.Surface, pos: pygame.math.Vector2, angle: float, obj_id: int):
-        """Pobiera maskę. Image musi być obrazkiem bazowym (nieobróconym)."""
+        """Pobiera maskę i rect. Image musi być obrazkiem bazowym (nieobróconym)."""
         cache_key = (obj_id, int(angle % 360))
         if cache_key in self._mask_cache:
             return self._mask_cache[cache_key]
@@ -50,7 +50,7 @@ class Collision():
             shot_pos = shot["pos"]
             shot_hit = False
             
-            # 1. Kolizja z asteroidami (zawsze niszczy pocisk)
+            # --- 1. Kolizja z asteroidami ---
             for asteroid in active_asteroids:
                 if (shot_pos - asteroid.pos).length_squared() < asteroid.radius**2:
                     shot_hit = True
@@ -59,7 +59,7 @@ class Collision():
                 self._process_shot_impact(shot, shoot_obj)
                 continue
 
-            # 2. Kolizja z graczem (tylko pociski wrogów)
+            # --- 2. Kolizja z graczem (tylko pociski wrogów) ---
             if shot.get("is_enemy_shot"):
                 if (shot_pos - player_pos).length_squared() < 35**2:
                     shot_hit = True
@@ -68,34 +68,48 @@ class Collision():
                     else:
                         if not player.is_destroyed:
                             self.music_obj.play("images/audio/kenney_sci-fi-sounds/forceField_001.wav", 0.25)
-                    if player.hp <= 0: return True # Game Over
+                    if player.hp <= 0: return True 
 
             if shot_hit: 
                 self._process_shot_impact(shot, shoot_obj)
                 continue
 
-            # 3. Kolizja z wrogami
+            # --- 3. Kolizja z wrogami (PIXEL-PERFECT) ---
             for enemy in active_enemies:
-                # Gracz może trafić każdego wroga. 
-                # Wróg może trafić innego wroga (ale nie samego siebie).
                 is_own_shot = shot.get("is_enemy_shot") and shot.get("enemy_id") == enemy.id
                 is_player_shooting = shot.get("is_player_shooting")
 
                 if not is_own_shot:
-                    if (shot_pos - enemy.pos).length_squared() < 55**2:
-                        if is_player_shooting:
-                            level_manager.xp += shot["damage"]
-                        enemy.hp -= shot["damage"]
-                        shot_hit = True
-                        if enemy.hp <= 0:
-                            enemy.death()
-                        break # Trafił jednego, przerywamy pętlę wrogów
+                    # KROK A: Wstępny test dystansowy (optymalizacja)
+                    if (shot_pos - enemy.pos).length_squared() < 65**2:
+                        
+                        # KROK B: Pobranie maski dla aktualnego obrotu wroga
+                        enemy_base_img = enemy_manager.ship_base_images[enemy.type_name]
+                        rect, mask = self.get_masked_data(enemy_base_img, enemy.pos, enemy.angle, id(enemy))
+                        
+                        # KROK C: Sprawdzenie czy punkt pocisku jest wewnątrz prostokąta obrazka
+                        if rect.collidepoint(shot_pos.x, shot_pos.y):
+                            # Obliczamy pozycję punktu względem maski
+                            rel_x = int(shot_pos.x - rect.left)
+                            rel_y = int(shot_pos.y - rect.top)
+                            
+                            # KROK D: Sprawdzenie konkretnego piksela (czy nie jest przezroczysty)
+                            if 0 <= rel_x < mask.get_size()[0] and 0 <= rel_y < mask.get_size()[1]:
+                                if mask.get_at((rel_x, rel_y)):
+                                    if is_player_shooting:
+                                        level_manager.xp += shot["damage"]
+                                    
+                                    enemy.hp -= shot["damage"]
+                                    shot_hit = True
+                                    if enemy.hp <= 0:
+                                        enemy.death()
+                                    break 
 
             if shot_hit: 
                 self._process_shot_impact(shot, shoot_obj)
                 continue
 
-        # --- 3. KOLIZJE STATKÓW ---
+        # --- 4. KOLIZJE STATKÓW I ASTEROID (Maski istniejące) ---
         
         # Gracz vs Asteroidy
         for asteroid in active_asteroids:
@@ -108,9 +122,7 @@ class Collision():
 
         # Wrogowie vs Asteroidy
         for enemy in active_enemies:
-            # POBIERANIE OBRAZKA Z MANAGERA (Naprawa błędu Image)
             enemy_base_img = enemy_manager.ship_base_images[enemy.type_name]
-            
             for asteroid in active_asteroids:
                 if (enemy.pos - asteroid.pos).length_squared() < (45 + asteroid.radius)**2:
                     r1, m1 = self.get_masked_data(enemy_base_img, enemy.pos, enemy.angle, id(enemy))
@@ -144,6 +156,22 @@ class Collision():
                     if e2.hp <= 0: e2.death()
         
         return False
+    
+    def select_enemy(self, x, y, offset_x=0, offset_y=0) -> int | None:
+        world_mouse_pos = pygame.math.Vector2(x + offset_x, y + offset_y)
+        for enemy in self.enemy_manager.enemies:
+            if not enemy.is_dead:
+                dist = (enemy.pos - world_mouse_pos).length()
+                if dist < 70:
+                    enemy_base_img = self.enemy_manager.ship_base_images[enemy.type_name]
+                    rect, mask = self.get_masked_data(enemy_base_img, enemy.pos, enemy.angle, id(enemy))
+                    if rect.collidepoint(world_mouse_pos.x, world_mouse_pos.y):
+                        rel_x = int(world_mouse_pos.x - rect.left)
+                        rel_y = int(world_mouse_pos.y - rect.top)
+                        if 0 <= rel_x < mask.get_size()[0] and 0 <= rel_y < mask.get_size()[1]:
+                            if mask.get_at((rel_x, rel_y)):
+                                return enemy.id
+        return None
 
     def _process_shot_impact(self, shot, shoot_obj):
         if shot.get("rocket"):
@@ -167,38 +195,22 @@ class Collision():
     def _handle_asteroid_impact(self, ship, asteroid, damage: int):
         is_player = hasattr(ship, 'player_pos')
         ship_pos = ship.player_pos if is_player else ship.pos
-        
-        # 1. Obliczanie kierunku odbicia (od środka asteroidy do statku)
         push_dir = ship_pos - asteroid.pos
-        dist_sq = push_dir.length_squared()
-        
-        if dist_sq > 0:
-            push_dir = push_dir.normalize()
-        else:
-            push_dir = pygame.math.Vector2(1, 0)
+        if push_dir.length_squared() > 0: push_dir = push_dir.normalize()
+        else: push_dir = pygame.math.Vector2(1, 0)
 
-        # 2. Logika odbicia (Fizyka)
-        # Odwracamy prędkość i dodajemy siłę odrzutu w stronę push_dir
-        bounce_strength = 400.0  # Siła odrzutu
-        
         if is_player:
-            # Gracz odbija się mocno
-            ship.velocity = push_dir * max(ship.velocity.length() * 0.6, bounce_strength*0.01)
-            # Odejmujemy HP zamiast zabijać od razu
+            ship.velocity = push_dir * 5
             ship.hp = 0
             ship.destroy_cause_collision()
         else:
-            ship.velocity = push_dir * max(ship.velocity.length() * 0.5, bounce_strength * 0.005)
+            ship.velocity = push_dir * 2
             ship.hp = 0
             ship.death()
 
-        # 3. Przesunięcie statku (Anti-stuck)
-        # Natychmiastowe odsunięcie statku poza promień asteroidy, żeby nie utknął w środku
-        overlap = (asteroid.radius + 20) # 20 to przybliżony promień statku
-        if is_player:
-            ship.player_pos = asteroid.pos + push_dir * overlap
-        else:
-            ship.pos = asteroid.pos + push_dir * overlap
+        overlap = (asteroid.radius + 20)
+        if is_player: ship.player_pos = asteroid.pos + push_dir * overlap
+        else: ship.pos = asteroid.pos + push_dir * overlap
 
     def _handle_ship_collision(self, player, enemy):
         push_dir = (player.player_pos - enemy.pos)

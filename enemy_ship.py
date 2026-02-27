@@ -108,7 +108,7 @@ class Enemy:
             self.debris_list = [d for d in self.debris_list if d.life > 0]
             return
 
-        # --- AI & RUCH ---
+        # --- AI & RUCH (bez zmian) ---
         if self.boost_cooldown_timer > 0: self.boost_cooldown_timer -= dt
         
         dir_to_player = (self.player_ref.player_pos - self.pos)
@@ -148,7 +148,6 @@ class Enemy:
         self.angular_velocity *= self.angular_friction
         self.angle += self.angular_velocity
 
-        # Boost logic
         if not self.is_boosting and self.boost_cooldown_timer <= 0:
             if (dist_to_player > 800 or is_near_border) and abs(angle_diff) < 20 and not danger_imminent:
                 self.is_boosting = True
@@ -170,7 +169,6 @@ class Enemy:
             anim_mult = 1.8 if self.is_boosting else 1.0
             self.fire_anim_index = (self.fire_anim_index + self.fire_anim_speed * anim_mult) % len(self.ogień_zza_rakiety)
             
-            # Trail / Smoke
             if random.random() > 0.3:
                 d_off = -35 if self.is_boosting else -22
                 fire_pos = self.pos + pygame.math.Vector2(d_off, 0).rotate(-self.angle)
@@ -187,39 +185,35 @@ class Enemy:
             p["life"] -= 1.0
             if p["life"] <= 0: self.trail_points.remove(p)
 
-        # --- LOGIKA STRZELANIA ---
+        # --- NOWA LOGIKA STRZELANIA (ZAMIANA LASER VS RAKIETA) ---
         self.weapon_timer += dt
         
-        # 1. Zwiększony zasięg do 3000 pikseli (to jest grubo poza ekranem)
-        # Usunąłem warunek 'not danger_imminent', żeby boty strzelały agresywniej nawet pod presją
         if dist_to_player < 3000:
-            
             weapon_to_use = None
             is_rock = False
 
-            # 2. Szansa na rakietę - ROŚNIE wraz z dystansem (artyleria dalekiego zasięgu)
-            # Przy 2000px szansa to 100% (2000/2000), przy 200px to tylko 10%
-            rocket_chance = dist_to_player / 2000.0
+            # Szansa na LASER - maleje wraz z dystansem (im bliżej tym większa)
+            # Przy 200px: 1 - 200/1000 = 0.8 (80% na laser)
+            # Przy 1000px: 1 - 1000/1000 = 0 (0% na laser -> przechodzi do rakiet)
+            laser_chance = 1.0 - (dist_to_player / 1000.0)
             
-            # Losowanie broni
-            if self.rocket_info and random.random() < rocket_chance:
-                # RAKIETY: Bardzo luźny kąt (60 stopni). 
-                # Bot strzela "w Twoją stronę" nawet jeśli Cię nie widzi.
-                if abs(angle_diff) < 60:
-                    weapon_to_use = self.rocket_info
-                    is_rock = True
-            elif self.laser_info:
-                # LASERY: Standardowy kąt (30 stopni). 
-                # Używane głównie w bliższym kontakcie.
+            # Próba wybrania LASERA (jeśli bot go posiada)
+            if self.laser_info and random.random() < laser_chance:
                 if abs(angle_diff) < 30:
                     weapon_to_use = self.laser_info
                     is_rock = False
+            
+            # Jeśli nie wybrano lasera (bo był za daleko lub losowanie nie wyszło), 
+            # spróbuj wybrać RAKIETĘ (jeśli bot ją posiada)
+            elif self.rocket_info:
+                if abs(angle_diff) < 60:
+                    weapon_to_use = self.rocket_info
+                    is_rock = True
 
-            # 3. Wykonaj strzał jeśli wybrano broń i cooldown minął
+            # Wykonaj strzał
             if weapon_to_use and self.weapon_timer >= weapon_to_use[3]:
-                # Opcjonalnie: resetuj timer tylko po udanym strzale
                 self.shoot(weapon_to_use, is_rock)
-                self.weapon_timer = 0 # Zerowanie timera po strzale
+                self.weapon_timer = 0
 
     def shoot(self, weapon_info: list, is_rocket: bool):
         self.weapon_timer = 0.0
@@ -228,9 +222,15 @@ class Enemy:
         bullet_vel = self.velocity + (direction * weapon_info[1])
         
         self.shoot_obj.create_missle({
-            "pos": self.pos.copy(), "vel": bullet_vel, "img": weapon_info[0],
-            "damage": weapon_info[2], "dir": self.angle, "rocket": is_rocket,
-            "is_enemy_shot": True, "enemy_id": self.id
+            "pos": self.pos.copy(),
+            "vel": bullet_vel, "img": weapon_info[0],
+            "damage": weapon_info[2],
+            "dir": self.angle,
+            "rocket": is_rocket,
+            "is_enemy_shot": True,
+            "enemy_id": self.id,
+            "destination": self.player_ref,
+            "max-speed": 25
         })
         
         if self.music_obj:
@@ -274,7 +274,7 @@ class EnemyManager:
         self.max_enemies = max_enemies
         self.world_radius = world_radius
         self.asteroid_manager = asteroid_manager
-        self.enemies = []
+        self.enemies: list[Enemy] = []
 
         # --- ŁADOWANIE KONFIGURACJI ---
         self.config_all = self._load_config("enemie_slownik.json")
@@ -388,9 +388,6 @@ class EnemyManager:
                     "laser": self._get_random_weapon(bot_config, "laser", self.weapons_lasers),
                     "rocket": self._get_random_weapon(bot_config, "rocket", self.weapons_rockets)
                 }
-
-                # Import klasy Enemy tutaj, jeśli jest w innym pliku, lub u góry
-                from enemy_ship import Enemy
                 new_enemy = Enemy(type_name, bot_config, self.ship_frames, self.player_ref, 
                                  self.music_obj, self.shoot_obj, self, spawn_pos, 
                                  self.asteroid_manager, self.blue_fire_frames, weapon_data)
@@ -404,3 +401,10 @@ class EnemyManager:
     def draw(self, window, camera_x, camera_y):
         for enemy in self.enemies:
             enemy.draw(window, camera_x, camera_y)
+
+    def get_enemy_by_id(self,id) -> Enemy | None:
+        for enemy in self.enemies:
+            if enemy.id == id:
+                return enemy
+            
+        return None

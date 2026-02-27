@@ -45,9 +45,9 @@ class Game():
         self.enemy_manager = EnemyManager(loaded_space_frames, self.player, music_obj, 5, self.shoot_obj, self.WORLD_RADIUS, self.asteroid_manager)
 
         self.level_manager = level_manager.LevelManager()
-        self.colision_obj = collisions.Collision(music_obj, cxx, cyy)
+        self.colision_obj = collisions.Collision(music_obj, cxx, cyy, self.enemy_manager)
         self.radar_obj = radar.Radar(cxx, cyy, 200, self.WORLD_RADIUS)
-        self.game_controller = ui.GameController(self.player_shoot, events_obj, self.player, cxx, cyy, loaded_space_frames_full, clock, self.level_manager)
+        self.game_controller = ui.GameController(self.player_shoot, events_obj, self.player, cxx, cyy, loaded_space_frames_full, clock, self.level_manager, self.colision_obj)
         self.paused = False
         self.dict = None
 
@@ -61,10 +61,13 @@ class Game():
         self.level_manager.update()
         self.game_controller.update(dt)
         self.player.update(dt)
-        self.player_shoot.update(dt)
+        a = self.game_controller.input_handler.update_cursor(self.camera.offset[0], self.camera.offset[1])
+        if a != None:
+            pass
+        self.player_shoot.update(dt, a)
         self.enemy_manager.update(dt)
         self.asteroid_manager.update(dt, self.player, self.enemy_manager)
-        self.shoot_obj.update()
+        self.shoot_obj.update(self.enemy_manager)
         
         # Fizyka bariery świata
         self.dist = self.player.player_pos.distance_to(self.WORLD_CENTER)

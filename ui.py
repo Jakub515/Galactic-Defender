@@ -7,11 +7,12 @@ if TYPE_CHECKING:
     from space_ship import Battle
     from event import Event
     from level_manager import LevelManager
+    from collisions import Collision
 
 class GameController:
-    def __init__(self, battle: "Battle", event_obj: "Event", player: "SpaceShip", cxx: int, cyy: int, loaded_images: dict, clock: pygame.time.Clock, level_manager: "LevelManager"):
+    def __init__(self, battle: "Battle", event_obj: "Event", player: "SpaceShip", cxx: int, cyy: int, loaded_images: dict, clock: pygame.time.Clock, level_manager: "LevelManager", collision: "Collision"):
         self.ui = UI(event_obj, cxx, cyy, loaded_images, battle, player, level_manager)
-        self.input_handler = InputHandler(event_obj, player, battle, self.ui)
+        self.input_handler = InputHandler(event_obj, player, battle, self.ui, collision)
         self.clock = clock
 
     def update(self, dt: float):
@@ -22,12 +23,13 @@ class GameController:
         self.ui.draw(window)
 
 class InputHandler:
-    def __init__(self, event_obj: "Event", player_obj: "SpaceShip", player_shoot: "Battle", ui_obj: "UI"):
+    def __init__(self, event_obj: "Event", player_obj: "SpaceShip", player_shoot: "Battle", ui_obj: "UI", collision:"Collision"):
         self.event_obj = event_obj
         self.player_obj = player_obj
         self.ctrl_pressed_last_frame = False
         self.player_shoot = player_shoot
         self.ui_obj = ui_obj
+        self.collision = collision
     
     def update(self):
         self.player_obj.thrust(self.event_obj.key_up, boost=self.event_obj.backquote)
@@ -50,6 +52,13 @@ class InputHandler:
             if pressed:
                 self.player_shoot.select_weapon(i)
                 break
+
+    def update_cursor(self, offset_x, offset_y) -> int | None:
+        if self.event_obj.click_right:
+            x = self.event_obj.mouse_x
+            y = self.event_obj.mouse_y
+            
+            return self.collision.select_enemy(x,y,offset_x=offset_x, offset_y=offset_y)
 
 class UI:
     def __init__(self, event_obj: "Event", screen_width: int, screen_height: int, images: dict, battle: "Battle", space_ship: "SpaceShip", level_manager: "LevelManager"):
