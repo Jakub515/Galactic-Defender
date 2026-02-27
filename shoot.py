@@ -72,7 +72,7 @@ class Shoot():
                             
                             shot["vel"] += steer
 
-                elif shot.get["is_player_shooting"]:
+                elif shot.get("is_player_shooting"):
                     if target_id is not None and time_alive > 0.1:
                         enemy = enemy_manager.get_enemy_by_id(target_id)
                         

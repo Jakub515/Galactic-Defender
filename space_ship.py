@@ -7,12 +7,13 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from music import MusicManager
     from shoot import Shoot
+    from enemy_ship import EnemyManager
 
 class Parameters:
     def __init__(self, ship_frames):
         # --- STATYSTYKI ŻYCIA ---
-        self.hp = 100
-        self.max_hp = 100
+        self.hp = 10_000
+        self.max_hp = 10_000
         self.hp_reg_speed = 1
 
         # --- FIZYKA I PRĘDKOŚĆ ---
@@ -107,6 +108,8 @@ class Battle():
         self.max_shield_cooldown = self.parameters.max_shield_cooldown
         self.enemy_selected = None
 
+        self.tryb_naprowadzania = 0
+
     
     def fire(self, active:bool): 
         if not self.player_main_class.is_destroyed: self.want_to_shoot = active
@@ -159,9 +162,7 @@ class Battle():
             if self.music_obj:
                 self.music_obj.play("images/audio/sfx_laser1.wav", 0.7)
 
-    def update(self, dt:float, get_enemy_selected: int|None):
-        if type(get_enemy_selected) == int:
-            self.enemy_selected = get_enemy_selected
+    def update(self, dt:float, enemy_manager: "EnemyManager"):
 
         if self.switch_cooldown > 0:
             self.switch_cooldown -= dt
@@ -177,8 +178,64 @@ class Battle():
 
         for i in range(len(self.weapon_timers)): self.weapon_timers[i] += dt
         for i in range(len(self.weapon_timers_2)): self.weapon_timers_2[i] += dt
+
+        if self.tryb_naprowadzania == 0:
+            self.enemy_selected = None
+
+        enemies = enemy_manager.enemies # Załóżmy, że to zwraca listę obiektów wrogów
+        if not enemies:
+            self.enemy_selected = None
+            return
+
+        player_pos = pygame.math.Vector2(self.player_main_class.player_pos)
+        best_target = None
+
+        if self.tryb_naprowadzania == 1:
+            # --- TRYB 1: NAJBLIŻSZY PRZECIWNIK ---
+            min_dist = float('inf')
+            for enemy in enemies:
+                enemy_pos = pygame.math.Vector2(enemy.pos)
+                dist = player_pos.distance_to(enemy_pos)
+                if dist < min_dist:
+                    min_dist = dist
+                    best_target = enemy
+
+        elif self.tryb_naprowadzania == 2:
+            # --- TRYB 2: NAJBLIŻEJ OSI CELOWNIKA (KIERUNKOWY) ---
+            # forward_dir to wektor kierunku, w który patrzy statek
+            look_dir = self.player_main_class.forward_dir.normalize()
+            max_score = -float('inf')
+            
+            # Maksymalny zasięg "widzenia" radaru, żeby nie celować w kogoś na drugim końcu mapy
+            max_radar_dist = 1200 
+
+            for enemy in enemies:
+                enemy_vec = pygame.math.Vector2(enemy.pos) - player_pos
+                dist = enemy_vec.length()
+                
+                if dist > max_radar_dist: continue # Ignoruj za dalekich
+
+                # Iloczyn skalarny (Dot Product) mówi nam, jak bardzo wektor wroga 
+                # pokrywa się z kierunkiem patrzenia (wynik od -1 do 1)
+                enemy_dir_normalized = enemy_vec.normalize()
+                alignment = look_dir.dot(enemy_dir_normalized)
+
+                # Obliczamy wagę:Alignment (ważniejsze) i dystans (mniej ważne)
+                # Wynik będzie wysoki dla kogoś bezpośrednio przed nami
+                score = (alignment * 1000) - (dist / 10) 
+
+                if score > max_score:
+                    max_score = score
+                    best_target = enemy
+
+        # Zapisujemy ID lub obiekt przeciwnika
+        if best_target:
+            # Zakładam, że przekazujesz unikalne ID wroga do pocisków naprowadzanych
+            self.enemy_selected = best_target.id
         
         if self.want_to_shoot: self._handle_shooting(self.player_main_class.forward_dir)
+
+        
 
     def draw(self, window:pygame.Surface, draw_x:float, draw_y:float):
         if self.shield_active and not self.player_main_class.hp <= 0:
@@ -190,6 +247,12 @@ class Battle():
         s = pygame.Surface((radius*2, radius*2), pygame.SRCALPHA)
         pygame.draw.circle(s, color, (radius, radius), radius, 3)
         return s
+    
+    def enemy_choose(self, tryb: int, enemies_list):
+        # tryb = 1: najbliższy enemy
+        # tryb = 2: najbliżej w stosunku do kąta obrócenia, nie za daleko od ekranu
+        # Pobieramy listę wszystkich aktywnych wrogów
+        self.tryb_naprowadzania = tryb
 
 class SpaceShip():
     def __init__(self, ship_frames: dict, ship_audio_path:list|tuple, cxx:int, cyy:int, player_pos:list|tuple, music: "MusicManager", shoot_obj: "Shoot", parameters: "Parameters"):

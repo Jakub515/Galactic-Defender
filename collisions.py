@@ -156,22 +156,7 @@ class Collision():
                     if e2.hp <= 0: e2.death()
         
         return False
-    
-    def select_enemy(self, x, y, offset_x=0, offset_y=0) -> int | None:
-        world_mouse_pos = pygame.math.Vector2(x + offset_x, y + offset_y)
-        for enemy in self.enemy_manager.enemies:
-            if not enemy.is_dead:
-                dist = (enemy.pos - world_mouse_pos).length()
-                if dist < 70:
-                    enemy_base_img = self.enemy_manager.ship_base_images[enemy.type_name]
-                    rect, mask = self.get_masked_data(enemy_base_img, enemy.pos, enemy.angle, id(enemy))
-                    if rect.collidepoint(world_mouse_pos.x, world_mouse_pos.y):
-                        rel_x = int(world_mouse_pos.x - rect.left)
-                        rel_y = int(world_mouse_pos.y - rect.top)
-                        if 0 <= rel_x < mask.get_size()[0] and 0 <= rel_y < mask.get_size()[1]:
-                            if mask.get_at((rel_x, rel_y)):
-                                return enemy.id
-        return None
+
 
     def _process_shot_impact(self, shot, shoot_obj):
         if shot.get("rocket"):

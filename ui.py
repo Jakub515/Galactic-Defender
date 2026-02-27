@@ -8,11 +8,12 @@ if TYPE_CHECKING:
     from event import Event
     from level_manager import LevelManager
     from collisions import Collision
+    from enemy_ship import EnemyManager
 
 class GameController:
-    def __init__(self, battle: "Battle", event_obj: "Event", player: "SpaceShip", cxx: int, cyy: int, loaded_images: dict, clock: pygame.time.Clock, level_manager: "LevelManager", collision: "Collision"):
-        self.ui = UI(event_obj, cxx, cyy, loaded_images, battle, player, level_manager)
-        self.input_handler = InputHandler(event_obj, player, battle, self.ui, collision)
+    def __init__(self, battle: "Battle", event_obj: "Event", player: "SpaceShip", cxx: int, cyy: int, loaded_images: dict, clock: pygame.time.Clock, level_manager: "LevelManager", collision: "Collision", enemy_manager: "EnemyManager"):
+        self.ui = UI(event_obj, cxx, cyy, loaded_images, battle, player, level_manager, enemy_manager)
+        self.input_handler = InputHandler(event_obj, player, battle, self.ui, collision, enemy_manager)
         self.clock = clock
 
     def update(self, dt: float):
@@ -23,13 +24,14 @@ class GameController:
         self.ui.draw(window)
 
 class InputHandler:
-    def __init__(self, event_obj: "Event", player_obj: "SpaceShip", player_shoot: "Battle", ui_obj: "UI", collision:"Collision"):
+    def __init__(self, event_obj: "Event", player_obj: "SpaceShip", player_shoot: "Battle", ui_obj: "UI", collision:"Collision", enemy_manager: "EnemyManager"):
         self.event_obj = event_obj
         self.player_obj = player_obj
         self.ctrl_pressed_last_frame = False
         self.player_shoot = player_shoot
         self.ui_obj = ui_obj
         self.collision = collision
+        self.enemy_manager = enemy_manager
     
     def update(self):
         self.player_obj.thrust(self.event_obj.key_up, boost=self.event_obj.backquote)
@@ -53,15 +55,13 @@ class InputHandler:
                 self.player_shoot.select_weapon(i)
                 break
 
-    def update_cursor(self, offset_x, offset_y) -> int | None:
-        if self.event_obj.click_right:
-            x = self.event_obj.mouse_x
-            y = self.event_obj.mouse_y
-            
-            return self.collision.select_enemy(x,y,offset_x=offset_x, offset_y=offset_y)
+        if self.event_obj.key_r:
+            self.ui_obj.last_celowanie_mode = 1
+        elif self.event_obj.key_t:
+            self.ui_obj.last_celowanie_mode = 1
 
 class UI:
-    def __init__(self, event_obj: "Event", screen_width: int, screen_height: int, images: dict, battle: "Battle", space_ship: "SpaceShip", level_manager: "LevelManager"):
+    def __init__(self, event_obj: "Event", screen_width: int, screen_height: int, images: dict, battle: "Battle", space_ship: "SpaceShip", level_manager: "LevelManager", enemy_manager: "EnemyManager"):
         self.event_obj = event_obj
         self.images = images
         self.battle = battle
@@ -69,6 +69,7 @@ class UI:
         self.cyy = screen_height
         self.space_ship = space_ship
         self.level_manager = level_manager
+        self.enemy_manager = enemy_manager
         
         self.displayed_hp = space_ship.hp
         self.max_hp = 100
@@ -99,6 +100,9 @@ class UI:
         self.target_x = 0
         self.spring_k = 0.5    # Bardzo silne przyciąganie
         self.friction = 0.4    # Bardzo wysokie tłumienie (szybko zabija pęd)
+
+        self.auto_celowanie = True
+        self.last_celowanie_mode = 1
 
     def get_hp_color(self, ratio: float) -> pygame.Color:
         ratio = max(0, min(1, ratio))
@@ -220,6 +224,26 @@ class UI:
         mode_txt.set_alpha(txt_alpha)
         window.blit(mode_txt, (self.cxx // 2 - mode_txt.get_width() // 2, self.y_pos + self.slot_size + 15))
 
+
+        player_pos = pygame.math.Vector2(self.battle.player_main_class.player_pos)
+    
+        # Tworzymy listę dystansów do każdego wroga
+        distances = min([player_pos.distance_to(e.pos) for e in self.enemy_manager.enemies])
+        if distances >= 3000:
+            self.auto_celowanie = False
+            text = ">> System celowania wyłączony <<"
+            self.battle.enemy_choose(0, self.enemy_manager.enemies)
+        else:
+            self.auto_celowanie = True
+            self.battle.enemy_choose(self.last_celowanie_mode, self.enemy_manager.enemies)
+            text = ">> System celowania włączony <<"
+
+        mode_txt = self.font_big.render(text, True, glow_col)
+        txt_alpha = int(155 + 100 * math.sin(self.pulse_time * 12))
+        mode_txt.set_alpha(txt_alpha)
+        window.blit(mode_txt, (self.cxx // 2 - mode_txt.get_width() // 2, self.y_pos + self.slot_size + 15 + 20))
+
+
         if self.battle.shield_active:
             s_ratio = self.battle.shield_timer / self.battle.shield_max_timer
             s_col = (255, 255, 255)
@@ -241,7 +265,7 @@ class UI:
         xp_h = 8
         xp_x = start_x
         # y_pos (paski broni) + slot_size (wysokość slotu) + 45 (odstęp pod napisem systemu)
-        xp_y = self.y_pos + self.slot_size + 45 
+        xp_y = self.y_pos + self.slot_size + 50 + mode_txt.get_height()
 
         actual_xp_ratio = max(0, min(1, self.level_manager.xp / self.max_xp))
         ghost_xp_ratio = max(0, min(1, self.displayed_xp / self.max_xp))
