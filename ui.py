@@ -58,7 +58,7 @@ class InputHandler:
         if self.event_obj.key_r:
             self.ui_obj.last_celowanie_mode = 1
         elif self.event_obj.key_t:
-            self.ui_obj.last_celowanie_mode = 1
+            self.ui_obj.last_celowanie_mode = 2
 
 class UI:
     def __init__(self, event_obj: "Event", screen_width: int, screen_height: int, images: dict, battle: "Battle", space_ship: "SpaceShip", level_manager: "LevelManager", enemy_manager: "EnemyManager"):
@@ -76,15 +76,13 @@ class UI:
         self.pulse_time = 0 
 
         self.displayed_xp = self.level_manager.xp
-        self.max_xp = self.level_manager.max_xp
-        self.pulse_time_xp = 0 
         
         try:
-            self.font = pygame.font.Font("fonts/JetBrainsMono-Italic-VariableFont_wght.ttf", 16)
-            self.font_big = pygame.font.Font("fonts/JetBrainsMono-Italic-VariableFont_wght.ttf", 20)
+            self.font = pygame.font.Font("fonts/JetBrainsMono-Italic-VariableFont_wght.ttf", 14)
+            self.font_big = pygame.font.Font("fonts/JetBrainsMono-Italic-VariableFont_wght.ttf", 18)
         except:
-            self.font = pygame.font.SysFont("Arial", 16, bold=True)
-            self.font_big = pygame.font.SysFont("Arial", 20, bold=True)
+            self.font = pygame.font.SysFont("Arial", 14, bold=True)
+            self.font_big = pygame.font.SysFont("Arial", 18, bold=True)
 
         self.laser_paths = ["images/Lasers/laserBlue12.png", "images/Lasers/laserBlue13.png", "images/Lasers/laserBlue14.png", "images/Lasers/laserBlue15.png", "images/Lasers/laserBlue16.png"]
         self.missile_paths = [f"images/Missiles/spaceMissiles_{p}.png" for p in ["001", "004", "007", "010", "013", "016", "019", "022", "025"]]
@@ -94,213 +92,207 @@ class UI:
         self.spacing = 8
         self.y_pos = 25
         
-        # --- ZMODYFIKOWANA FIZYKA (Mniej sprężyny, więcej sztywności) ---
         self.frame_x = screen_width // 2
         self.frame_vel = 0
         self.target_x = 0
-        self.spring_k = 0.5    # Bardzo silne przyciąganie
-        self.friction = 0.4    # Bardzo wysokie tłumienie (szybko zabija pęd)
+        self.spring_k = 0.5
+        self.friction = 0.4
 
-        self.auto_celowanie = True
         self.last_celowanie_mode = 1
 
-    def get_hp_color(self, ratio: float) -> pygame.Color:
-        ratio = max(0, min(1, ratio))
+    def get_hp_color(self, ratio):
+        # Zabezpieczenie, aby ratio było w przedziale 0.0 - 1.0
+        ratio = max(0.0, min(1.0, ratio))
+        
         if ratio > 0.5:
-            return pygame.Color(int(255 * (1 - ratio) * 2), 255, 0)
-        return pygame.Color(255, int(255 * ratio * 2), 0)
+            # Od zielonego (0, 255, 0) do żółtego (255, 255, 0)
+            # Przy ratio=0.6, czerwony rośnie
+            red = int(255 * (1 - ratio) * 2)
+            return pygame.Color(red, 255, 0)
+        else:
+            # Od żółtego (255, 255, 0) do czerwonego (255, 0, 0)
+            # Przy ratio=0.4, zielony maleje
+            green = int(255 * ratio * 2)
+            return pygame.Color(255, green, 0)
 
-    def draw_proportional_icon(self, window: pygame.Surface, icon: pygame.Surface, rect: pygame.Rect, alpha=255):
+    def draw_proportional_icon(self, window, icon, rect, alpha=255):
         img_w, img_h = icon.get_size()
-        padding = 10
-        max_dim = rect.width - padding
-        scale = min(max_dim / img_w, max_dim / img_h)
+        scale = min((rect.width - 10) / img_w, (rect.height - 10) / img_h)
         scaled_icon = pygame.transform.smoothscale(icon, (int(img_w * scale), int(img_h * scale)))
-        if alpha < 255:
-            scaled_icon.set_alpha(alpha)
+        if alpha < 255: scaled_icon.set_alpha(alpha)
         window.blit(scaled_icon, scaled_icon.get_rect(center=rect.center))
 
-    def update(self, current_fps: float, dt: float):
+    def update(self, current_fps, dt):
         self.fps = current_fps
         self.pulse_time += dt
-        
-        if self.displayed_hp > self.space_ship.hp:
-            self.displayed_hp -= (self.displayed_hp - self.space_ship.hp) * 0.1
-        else:
-            self.displayed_hp = self.space_ship.hp
+        self.displayed_hp += (self.space_ship.hp - self.displayed_hp) * 0.1
+        self.displayed_xp += (self.level_manager.xp - self.displayed_xp) * 0.05
 
+        # Fizyka ramki broni
         active_paths = self.laser_paths if self.battle.active_set == 1 else self.missile_paths
         total_w = len(active_paths) * (self.slot_size + self.spacing) - self.spacing
         start_x = (self.cxx - total_w) // 2
-        
         self.target_x = start_x + self.battle.current_weapon * (self.slot_size + self.spacing)
 
-        # Fizyka - im mniejszy friction i większy k, tym ruch jest sztywniejszy
         force = (self.target_x - self.frame_x) * self.spring_k
-        self.frame_vel += force
-        self.frame_vel *= self.friction
+        self.frame_vel = (self.frame_vel + force) * self.friction
         self.frame_x += self.frame_vel
 
-        # Natychmiastowe wyrównanie przy małym błędzie
-        if abs(self.frame_x - self.target_x) < 0.5:
-            self.frame_x = self.target_x
-            self.frame_vel = 0
-
-        if self.displayed_xp < self.level_manager.xp:
-            self.displayed_xp += (self.level_manager.xp - self.displayed_xp) * 0.05
-        else:
-            self.displayed_xp = self.level_manager.xp
-
-    def draw(self, window: pygame.Surface):
-        overlay = pygame.Surface((self.cxx, 110), pygame.SRCALPHA)
-        pygame.draw.rect(overlay, (0, 0, 0, 100), (0, 0, self.cxx, 110))
+    def draw(self, window):
+        # 1. Background Overlay
+        overlay = pygame.Surface((self.cxx, 115), pygame.SRCALPHA)
+        pygame.draw.rect(overlay, (0, 0, 0, 140), (0, 0, self.cxx, 115))
         window.blit(overlay, (0, 0))
 
-        fps_text = self.font.render(f"FPS: {int(self.fps)}", True, (0, 255, 100))
-        window.blit(fps_text, (self.cxx - fps_text.get_width() - 20 , 20))
-
+        # 2. HP Section
         hp_x, hp_y, hp_w, hp_h = 20, 25, 220, 18
-        actual_ratio = max(0, self.space_ship.hp / self.max_hp)
-        ghost_ratio = max(0, self.displayed_hp / self.max_hp)
-        hp_col = self.get_hp_color(actual_ratio)
-
-        if actual_ratio < 0.25:
-            pulse = int(170 + 85 * math.sin(self.pulse_time * 15))
-            hp_col = pygame.Color(pulse, 20, 20)
-
-        pygame.draw.rect(window, (30, 30, 40), (hp_x, hp_y, hp_w, hp_h), border_radius=6)
-        if ghost_ratio > actual_ratio:
-            pygame.draw.rect(window, (150, 50, 50), (hp_x, hp_y, int(hp_w * ghost_ratio), hp_h), border_radius=6)
-        if actual_ratio > 0:
-            pygame.draw.rect(window, hp_col, (hp_x, hp_y, int(hp_w * actual_ratio), hp_h), border_radius=6)
-        pygame.draw.rect(window, (200, 200, 200), (hp_x, hp_y, hp_w, hp_h), 2, border_radius=6)
         
-        hp_label = self.font.render(f"HEALTH: {int(actual_ratio*100)}%", True, (255, 255, 255))
-        window.blit(hp_label, (hp_x, hp_y + hp_h + 5))
-
+        # Obliczamy ratio na podstawie zmiennej max_hp ze statku
+        # Dodajemy max(1, ...), aby uniknąć dzielenia przez zero w razie błędu
+        current_max_hp = max(1, self.space_ship.max_hp)
         
-
+        ratio = max(0, min(1, (self.space_ship.hp if self.space_ship.hp > 0 else 0)/ current_max_hp)) 
+        ghost_ratio = max(0, min(1, self.displayed_hp / current_max_hp))
+        
+        # Rysowanie tła
+        pygame.draw.rect(window, (40, 40, 50), (hp_x, hp_y, hp_w, hp_h), border_radius=4)
+        
+        # Pasek "ducha" (efekt otrzymywania obrażeń)
+        if ghost_ratio > ratio:
+            pygame.draw.rect(window, (150, 50, 50), (hp_x, hp_y, int(hp_w * ghost_ratio), hp_h), border_radius=4)
+            
+        # Pasek właściwy życia
+        pygame.draw.rect(window, self.get_hp_color(ratio), (hp_x, hp_y, int(hp_w * ratio), hp_h), border_radius=4)
+        
+        # Ramka paska
+        pygame.draw.rect(window, (200, 200, 200), (hp_x, hp_y, hp_w, hp_h), 2, border_radius=4)
+        
+        # Wyświetlanie tekstu HP: Aktualne / Max
+        hp_text = f"HP: {int(self.space_ship.hp)} / {int(current_max_hp)}"
+        window.blit(self.font.render(hp_text, True, (255, 255, 255)), (hp_x, hp_y + 22))
+        # 3. Weapons & Switching Bar
         active_paths = self.laser_paths if self.battle.active_set == 1 else self.missile_paths
         weapon_specs = self.battle.weapons if self.battle.active_set == 1 else self.battle.weapons_2
         timers = self.battle.weapon_timers if self.battle.active_set == 1 else self.battle.weapon_timers_2
         is_switching = self.battle.switch_cooldown > 0
-
+        
         total_w = len(active_paths) * (self.slot_size + self.spacing) - self.spacing
         start_x = (self.cxx - total_w) // 2
 
         for i, path in enumerate(active_paths):
             x = start_x + i * (self.slot_size + self.spacing)
-            is_selected = (i == self.battle.current_weapon)
             rect = pygame.Rect(x, self.y_pos, self.slot_size, self.slot_size)
+            is_selected = (i == self.battle.current_weapon)
             
-            bg_col = (60, 60, 100, 220) if is_selected else (40, 40, 60, 200)
-            slot_bg = pygame.Surface((self.slot_size, self.slot_size), pygame.SRCALPHA)
-            pygame.draw.rect(slot_bg, bg_col, (0, 0, self.slot_size, self.slot_size), border_radius=8)
-            window.blit(slot_bg, (x, self.y_pos))
+            pygame.draw.rect(window, (30, 30, 50) if is_selected else (15, 15, 25), rect, border_radius=8)
+            self.draw_proportional_icon(window, self.images[path], rect, alpha=255 if is_selected else 120)
             
-            self.draw_proportional_icon(window, self.images[path], rect, alpha=255 if is_selected else 160)
-
-            progress = min(timers[i] / weapon_specs[i][3], 1.0)
-            if progress < 1.0:
-                overlay_h = int(self.slot_size * (1.0 - progress))
-                re_overlay = pygame.Surface((self.slot_size, overlay_h), pygame.SRCALPHA)
-                re_overlay.fill((0, 0, 0, 200))
-                window.blit(re_overlay, (x, self.y_pos))
+            # Individual Cooldown
+            p = min(timers[i] / weapon_specs[i][3], 1.0)
+            if p < 1.0:
+                h = int(self.slot_size * (1.0 - p))
+                s = pygame.Surface((self.slot_size, h), pygame.SRCALPHA)
+                s.fill((0, 0, 0, 180))
+                window.blit(s, (x, self.y_pos))
             pygame.draw.rect(window, (100, 100, 120), rect, 1, border_radius=8)
 
-        glow_col = (255, 50, 50) if is_switching else (0, 220, 255)
-        for j in range(3):
-            pygame.draw.rect(window, glow_col, (self.frame_x-2-j, self.y_pos-2-j, self.slot_size+4+j*2, self.slot_size+4+j*2), 1, border_radius=10)
+        # Selection Glow
+        theme_col = (255, 50, 50) if is_switching else (0, 220, 255)
+        pygame.draw.rect(window, theme_col, (self.frame_x-3, self.y_pos-3, self.slot_size+6, self.slot_size+6), 2, border_radius=10)
 
-        mode_name = ">> LASER SYSTEM ACTIVE <<" if self.battle.active_set == 1 else ">> MISSILE RACKS LOADED <<"
-        if is_switching: 
-            mode_name = "!! RECALIBRATING SYSTEMS !!"
+        # Global Switching Bar (Pasek zmiany zestawów)
+        if is_switching:
             sw_ratio = 1.0 - (self.battle.switch_cooldown / self.battle.max_switch_time)
-            pygame.draw.rect(window, (50, 0, 0), (start_x, self.y_pos + self.slot_size + 5, total_w, 4))
-            pygame.draw.rect(window, (0, 255, 255), (start_x, self.y_pos + self.slot_size + 5, int(total_w * sw_ratio), 4))
+            pygame.draw.rect(window, (40, 0, 0), (start_x, self.y_pos + self.slot_size + 8, total_w, 4))
+            pygame.draw.rect(window, (255, 50, 50), (start_x, self.y_pos + self.slot_size + 8, int(total_w * sw_ratio), 4))
 
-        mode_txt = self.font_big.render(mode_name, True, glow_col)
-        txt_alpha = int(155 + 100 * math.sin(self.pulse_time * 10))
-        mode_txt.set_alpha(txt_alpha)
-        window.blit(mode_txt, (self.cxx // 2 - mode_txt.get_width() // 2, self.y_pos + self.slot_size + 15))
+        # 4. XP & LEVEL Section
+        xp_y = self.y_pos + self.slot_size + 22
+        xp_ratio = max(0, min(1, self.level_manager.xp / self.level_manager.max_xp))
+        ghost_xp = max(0, min(1, self.displayed_xp / self.level_manager.max_xp))
+        
+        # Pasek XP
+        pygame.draw.rect(window, (20, 20, 35), (start_x, xp_y, total_w, 6), border_radius=3)
+        pygame.draw.rect(window, (0, 180, 255, 100), (start_x, xp_y, int(total_w * ghost_xp), 6), border_radius=3)
+        pygame.draw.rect(window, (0, 120, 255), (start_x, xp_y, int(total_w * xp_ratio), 6), border_radius=3)
+        
+        # Tekst LEVEL pod paskiem
+        lvl_text = f"LEVEL {self.level_manager.level}"
+        xp_text = f"{int(self.level_manager.xp)} / {int(self.level_manager.max_xp)} XP"
+        
+        lvl_surf = self.font.render(lvl_text, True, (255, 215, 0)) # Złoty kolor dla poziomu
+        xp_surf = self.font.render(xp_text, True, (150, 180, 255))
+        
+        window.blit(lvl_surf, (start_x, xp_y + 10))
+        window.blit(xp_surf, (start_x + total_w - xp_surf.get_width(), xp_y + 10))
+        # 5. Targeting Module
+        self._draw_targeting_module(window, theme_col)
 
-
-        player_pos = pygame.math.Vector2(self.battle.player_main_class.player_pos)
-    
-        # Tworzymy listę dystansów do każdego wroga
-        distances = min([player_pos.distance_to(e.pos) for e in self.enemy_manager.enemies])
-        if distances >= 3000:
-            self.auto_celowanie = False
-            text = ">> System celowania wyłączony <<"
-            self.battle.enemy_choose(0, self.enemy_manager.enemies)
-        else:
-            self.auto_celowanie = True
-            self.battle.enemy_choose(self.last_celowanie_mode, self.enemy_manager.enemies)
-            text = ">> System celowania włączony <<"
-
-        mode_txt = self.font_big.render(text, True, glow_col)
-        txt_alpha = int(155 + 100 * math.sin(self.pulse_time * 12))
-        mode_txt.set_alpha(txt_alpha)
-        window.blit(mode_txt, (self.cxx // 2 - mode_txt.get_width() // 2, self.y_pos + self.slot_size + 15 + 20))
-
-
-        if self.battle.shield_active:
-            s_ratio = self.battle.shield_timer / self.battle.shield_max_timer
-            s_col = (255, 255, 255)
-        else:
-            s_ratio = 1.0 - (self.battle.shield_cooldown / self.battle.max_shield_cooldown)
-            s_col = (0, 150, 255)
-        self._draw_skill_bar(window, start_x - 50, "SHIELD", s_ratio, s_col)
+        # 6. Skills
+        self._draw_skill_bar(window, start_x - 50, "Shield", 
+                             self.battle.shield_timer / self.battle.shield_max_timer if self.battle.shield_active 
+                             else 1.0 - (self.battle.shield_cooldown / self.battle.max_shield_cooldown), 
+                             (255, 255, 255) if self.battle.shield_active else (0, 120, 255))
         
         ship = self.battle.player_main_class
-        b_ratio = 1.0 - (ship.boost_cooldown / ship.max_boost_cooldown)
-        b_col = (255, 150, 0) if ship.is_boost_ready else (100, 50, 0)
-        self._draw_skill_bar(window, start_x + total_w + 30, "BOOST", b_ratio, b_col)
+        self._draw_skill_bar(window, start_x + total_w + 30, "Booster", 1.0 - (ship.boost_cooldown / ship.max_boost_cooldown), (255, 150, 0))
 
-        # --- SEKCJA XP WYŚRODKOWANA POD BRONIĄ ---
-        self.max_xp = self.level_manager.max_xp
+    def _draw_targeting_module(self, window, theme_color):
+        ui_x, ui_y = 25, self.cyy - 105
+        panel_w, panel_h = 250, 80
         
-        # Obliczamy wymiary: szerokość taka sama jak paska broni, wysokość mniejsza
-        xp_w = total_w 
-        xp_h = 8
-        xp_x = start_x
-        # y_pos (paski broni) + slot_size (wysokość slotu) + 45 (odstęp pod napisem systemu)
-        xp_y = self.y_pos + self.slot_size + 50 + mode_txt.get_height()
+        player_pos = pygame.math.Vector2(self.space_ship.player_pos)
+        enemies = self.enemy_manager.enemies
+        dists = [player_pos.distance_to(e.pos) for e in enemies] if enemies else []
+        min_d = min(dists) if dists else 9999
+        
+        is_active = min_d < 3000
+        self.battle.enemy_choose(self.last_celowanie_mode if is_active else 0, enemies)
 
-        actual_xp_ratio = max(0, min(1, self.level_manager.xp / self.max_xp))
-        ghost_xp_ratio = max(0, min(1, self.displayed_xp / self.max_xp))
-        
-        # Kolory: Elegancki fiolet/niebieski dla XP
-        xp_bg_col = (20, 20, 40, 180)
-        xp_main_col = (0, 180, 255)      # Jasnoniebieski
-        xp_ghost_col = (100, 255, 255)   # Cyjan przy zdobywaniu
+        # Panel Drawing
+        surf = pygame.Surface((panel_w, panel_h), pygame.SRCALPHA)
+        pygame.draw.rect(surf, (10, 15, 25, 220), (0, 0, panel_w, panel_h), border_radius=12)
+        pygame.draw.rect(surf, (theme_color[0], theme_color[1], theme_color[2], 80), (0, 0, panel_w, panel_h), 2, border_radius=12)
+        window.blit(surf, (ui_x, ui_y))
 
-        # Tło paska (Surface z alpha dla lekkiej przeźroczystości)
-        xp_surface = pygame.Surface((xp_w, xp_h), pygame.SRCALPHA)
-        pygame.draw.rect(xp_surface, xp_bg_col, (0, 0, xp_w, xp_h), border_radius=4)
-        
-        # Rysowanie postępu
-        if actual_xp_ratio > 0:
-            # Pasek "ducha" (szybki błysk przy zdobyciu)
-            pygame.draw.rect(xp_surface, xp_ghost_col, (0, 0, int(xp_w * actual_xp_ratio), xp_h), border_radius=4)
-            # Pasek właściwy (płynnie goniący)
-            pygame.draw.rect(xp_surface, xp_main_col, (0, 0, int(xp_w * ghost_xp_ratio), xp_h), border_radius=4)
-        
-        # Ramka
-        pygame.draw.rect(xp_surface, (100, 100, 200, 255), (0, 0, xp_w, xp_h), 1, border_radius=4)
-        window.blit(xp_surface, (xp_x, xp_y))
+        # Signal Bars
+        for i in range(5):
+            bar_on = is_active and (min_d < (3500 - i * 600))
+            pygame.draw.rect(window, theme_color if bar_on else (40, 45, 55), (ui_x + 15, ui_y + 55 - (i*9), 12, 6))
 
-        # Napis XP pod paskiem
-        xp_text = f"LEVEL {self.level_manager.level}  |  {int(self.level_manager.xp)} / {int(self.max_xp)} XP"
-        xp_label = self.font.render(xp_text, True, (200, 220, 255))
-        xp_label.set_alpha(180) # Lekko przeźroczysty napis
-        window.blit(xp_label, (self.cxx // 2 - xp_label.get_width() // 2, xp_y + xp_h + 4))
+        # Text Info
+        status_col = (0, 255, 180) if is_active else (250, 50, 50)
+        window.blit(self.font.render("TARGETING COMPUTER", True, (140, 140, 150)), (ui_x + 40, ui_y + 12))
+        
+        status_surf = self.font_big.render("SYSTEM ONLINE" if is_active else "NO TARGETS", True, status_col)
+        if not is_active: status_surf.set_alpha(int(150 + 105 * math.sin(self.pulse_time * 12)))
+        window.blit(status_surf, (ui_x + 40, ui_y + 28))
+
+        if is_active:
+            mode_txt = "MODE: CLOSEST" if self.last_celowanie_mode == 1 else "MODE: FORWARD ANGLE"
+            window.blit(self.font.render(mode_txt, True, (0, 180, 255)), (ui_x + 40, ui_y + 52))
+
+        # Keys
+        for i, (k, m) in enumerate([("R", 1), ("T", 2)]):
+            col = (255, 255, 255) if self.last_celowanie_mode == m else (80, 80, 80)
+            window.blit(self.font.render(k, True, col), (ui_x + panel_w - 45 + i*20, ui_y + 12))
 
     def _draw_skill_bar(self, window, x, label, ratio, color):
-        bar_w, bar_h = 12, self.slot_size
-        pygame.draw.rect(window, (20, 20, 30), (x, self.y_pos, bar_w, bar_h), border_radius=2)
-        fill_h = int(bar_h * max(0, min(1, ratio)))
-        pygame.draw.rect(window, color, (x, self.y_pos + (bar_h - fill_h), bar_w, fill_h), border_radius=2)
-        txt = self.font.render(label, True, (150, 150, 150))
-        tx = x + (bar_w // 2) - (txt.get_width() // 2)
-        window.blit(txt, (tx, self.y_pos + bar_h + 5))
+        bar_w, bar_h = 10, self.slot_size
+        
+        # 1. Rysowanie tła paska
+        pygame.draw.rect(window, (30, 30, 40), (x, self.y_pos, bar_w, bar_h), border_radius=2)
+        
+        # 2. Rysowanie wypełnienia (od dołu do góry)
+        f_h = int(bar_h * max(0, min(1, ratio)))
+        pygame.draw.rect(window, color, (x, self.y_pos + (bar_h - f_h), bar_w, f_h), border_radius=2)
+        
+        # 3. Renderowanie i centrowanie etykiety
+        text_surf = self.font.render(label, True, (130, 130, 140))
+        
+        # Obliczamy środek paska (x + połowa bar_w) 
+        # i odejmujemy połowę szerokości tekstu
+        text_x = x + (bar_w // 2) - (text_surf.get_width() // 2)
+        text_y = self.y_pos + bar_h + 5
+        
+        window.blit(text_surf, (text_x, text_y))
