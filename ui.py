@@ -168,7 +168,7 @@ class UI:
         pygame.draw.rect(window, (200, 200, 200), (hp_x, hp_y, hp_w, hp_h), 2, border_radius=4)
         
         # Wyświetlanie tekstu HP: Aktualne / Max
-        hp_text = f"HP: {int(self.space_ship.hp)} / {int(current_max_hp)}"
+        hp_text = f"HP: {int(self.space_ship.hp if self.space_ship.hp > 0 else 0)} / {int(current_max_hp)}"
         window.blit(self.font.render(hp_text, True, (255, 255, 255)), (hp_x, hp_y + 22))
         # 3. Weapons & Switching Bar
         active_paths = self.laser_paths if self.battle.active_set == 1 else self.missile_paths
