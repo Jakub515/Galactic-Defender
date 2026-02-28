@@ -41,7 +41,7 @@ class Shoot():
 
             # --- 2. LOGIKA CZASU ŻYCIA ---
             time_alive = current_time - shot["spawn_time"]
-            if time_alive > 10.0:
+            if time_alive > shot.get("time-alive-all"):
                 if shot.get("rocket"):
                     shot["is_exploding"] = True
                 else:
@@ -50,12 +50,12 @@ class Shoot():
 
             # --- 3. LOGIKA RAKIET (TYLKO DLA RAKIET) ---
             if shot.get("rocket"):
-                max_speed = shot.get("max-speed", 12)
+                max_speed = shot.get("max-speed")
                 target_id = shot.get("destination")
                 
                 # Naprowadzanie (arming delay 0.4s)
                 if shot.get("is_enemy_shot"):
-                    if time_alive > 0.1:
+                    if time_alive > shot.get("time-alive_before_manewring"):
                         player = target_id
                     
                         target_pos = pygame.math.Vector2(player.player_pos)
@@ -66,14 +66,14 @@ class Shoot():
                             steer = desired - shot["vel"]
                             
                             # Czułość skrętu
-                            steer_limit = 2.5
+                            steer_limit = shot.get("steer-limit")
                             if steer.length() > steer_limit:
                                 steer.scale_to_length(steer_limit)
                             
                             shot["vel"] += steer
 
                 elif shot.get("is_player_shooting"):
-                    if target_id is not None and time_alive > 0.1:
+                    if target_id is not None and time_alive > shot.get("time-alive_before_manewring"):
                         enemy = enemy_manager.get_enemy_by_id(target_id)
                         
                         if enemy and not enemy.is_dead:
@@ -85,7 +85,7 @@ class Shoot():
                                 steer = desired - shot["vel"]
                                 
                                 # Czułość skrętu
-                                steer_limit = 2.5
+                                steer_limit = shot.get("steer-limit")
                                 if steer.length() > steer_limit:
                                     steer.scale_to_length(steer_limit)
                                 

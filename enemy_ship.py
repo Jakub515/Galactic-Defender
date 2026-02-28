@@ -221,18 +221,38 @@ class Enemy:
         direction = pygame.math.Vector2(math.cos(rad), math.sin(rad))
         bullet_vel = self.velocity + (direction * weapon_info[1])
         
-        self.shoot_obj.create_missle({
-            "pos": self.pos.copy(),
-            "vel": bullet_vel, "img": weapon_info[0],
-            "damage": weapon_info[2],
-            "dir": self.angle,
-            "rocket": is_rocket,
-            "is_enemy_shot": True,
-            "enemy_id": self.id,
-            "destination": self.player_ref,
-            "max-speed": 25
-        })
-        
+        if not is_rocket:
+            # LASER (weapon_info indeksy 0-5)
+            self.shoot_obj.create_missle({
+                "pos": self.pos.copy(), 
+                "vel": bullet_vel, 
+                "img": weapon_info[0], 
+                "damage": weapon_info[2], 
+                "dir": self.angle,
+                "rocket": False,
+                "enemy_id": self.id,
+                "is_enemy_shot": True,
+                "destination": None,
+                "time-alive-all": weapon_info[4],
+                "max-speed": weapon_info[5]
+            })
+        else:
+            # RAKIETA (weapon_info indeksy 0-7)
+            self.shoot_obj.create_missle({
+                "pos": self.pos.copy(),
+                "vel": bullet_vel,
+                "img": weapon_info[0],
+                "damage": weapon_info[2],
+                "dir": self.angle,
+                "rocket": True,
+                "is_enemy_shot": True,
+                "enemy_id": self.id,
+                "destination": self.player_ref,
+                "max-speed": weapon_info[4],                   # Poprawiony indeks z 5 na 4
+                "time-alive_before_manewring": weapon_info[5], # Poprawny indeks 5
+                "time-alive-all": weapon_info[6],              # Poprawny indeks 6
+                "steer-limit": weapon_info[7]                  # Poprawny indeks 7
+            })
         if self.music_obj:
             sfx = "images/audio/sfx_laser2.wav" if is_rocket else "images/audio/sfx_laser1.wav"
             self.music_obj.play(sfx, 0.25)
@@ -340,16 +360,26 @@ class EnemyManager:
             w = l_dict[key]
             img = self.ship_frames.get(w["path"])
             if img:
-                self.weapons_lasers.append([img, w["speed"], w["damage"], w["cooldown"]])
+                self.weapons_lasers.append([img, w["speed"], w["damage"], w["cooldown"], w["time-alive-all"], w["max-speed"]])
 
+        # Rakiety
         # Rakiety
         r_dict = w_data.get("rockets", {})
         for key in sorted(r_dict.keys(), key=lambda x: int(''.join(filter(str.isdigit, x)) or 0)):
             w = r_dict[key]
             img = self.ship_frames.get(w["path"])
             if img:
-                self.weapons_rockets.append([img, w["speed"], w["damage"], w["cooldown"]])
-        
+                # Sugerowana nowa kolejność (taka sama jak w Twoim update):
+                self.weapons_rockets.append([
+                    img,                            # 0
+                    w["speed"],                      # 1
+                    w["damage"],                     # 2
+                    w["cooldown"],                   # 3
+                    w["max-speed"],                  # 4
+                    w["time-alive_before_manewring"],# 5
+                    w["time-alive-all"],             # 6
+                    w["steer-limit"]                 # 7
+                ])
         print(f"Zasoby broni załadowane: Lasery: {len(self.weapons_lasers)}, Rakiety: {len(self.weapons_rockets)}")
 
     def _get_random_weapon(self, bot_config, weapon_key, source_list):

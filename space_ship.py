@@ -53,7 +53,7 @@ class Parameters:
                 w = lasers[key]
                 img = ship_frames.get(w["path"]) #
                 if img:
-                    self.weapons.append([img, w["speed"], w["damage"], w["cooldown"]]) #
+                    self.weapons.append([img, w["speed"], w["damage"], w["cooldown"], w["max-speed"], w["time-alive-all"]]) #
 
             # Wczytywanie rakiet (Set 2)
             rockets = weapon_data.get("rockets", {}) #
@@ -61,7 +61,8 @@ class Parameters:
                 w = rockets[key]
                 img = ship_frames.get(w["path"]) #
                 if img:
-                    self.weapons_2.append([img, w["speed"], w["damage"], w["cooldown"]]) #
+                    self.weapons_2.append([img, w["speed"], w["damage"], w["cooldown"], w["max-speed"],
+                                           w["time-alive_before_manewring"], w["time-alive-all"], w["steer-limit"]]) #
 
         except (FileNotFoundError, json.JSONDecodeError) as e:
             raise Exception(f"Błąd ładowania broni gracza: {e}") from e
@@ -148,17 +149,34 @@ class Battle():
             timers[self.current_weapon] = 0.0
             
             bullet_vel = self.player_main_class.velocity + (forward_dir * w_data[1])
-            self.shoot_obj.create_missle({
-                "pos": self.player_main_class.player_pos.copy(), 
-                "vel": bullet_vel, 
-                "img": w_data[0], 
-                "damage": w_data[2], 
-                "dir": self.player_main_class.angle,
-                "rocket": (self.active_set == 2),
-                "is_player_shooting": True,
-                "destination": self.enemy_selected if (self.active_set == 2) else None,
-                "max-speed": 25
-            })
+            if self.active_set == 1: #lasery
+                self.shoot_obj.create_missle({
+                    "pos": self.player_main_class.player_pos.copy(), 
+                    "vel": bullet_vel, 
+                    "img": w_data[0], 
+                    "damage": w_data[2], 
+                    "dir": self.player_main_class.angle,
+                    "rocket": False,
+                    "is_player_shooting": True,
+                    "destination": self.enemy_selected if (self.active_set == 2) else None,
+                    "max-speed": w_data[4],
+                    "time-alive-all": w_data[5],
+                })
+            elif self.active_set == 2: #rakiety
+                self.shoot_obj.create_missle({
+                    "pos": self.player_main_class.player_pos.copy(), 
+                    "vel": bullet_vel, 
+                    "img": w_data[0], 
+                    "damage": w_data[2], 
+                    "dir": self.player_main_class.angle,
+                    "rocket": True,
+                    "is_player_shooting": True,
+                    "destination": self.enemy_selected if (self.active_set == 2) else None,
+                    "max-speed": w_data[4],
+                    "time-alive_before_manewring": w_data[5], 
+                    "time-alive-all": w_data[6],
+                    "steer-limit": w_data[7]
+                })
             if self.music_obj:
                 self.music_obj.play("images/audio/sfx_laser1.wav", 0.7)
 
