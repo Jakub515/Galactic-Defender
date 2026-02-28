@@ -14,7 +14,7 @@ FPS = 60
 clock = pygame.time.Clock()
 window = pygame.display.set_mode((1920, 1080 ), pygame.FULLSCREEN)
 cxx, cyy = window.get_size()
-pygame.display.set_caption("Kosmos")
+pygame.display.set_caption("Galaxy Defender")
 
 # --- B. ŁADOWANIE ZASOBÓW (Zintegrowane w module) ---
 image_loader = load_images.ImageLoad()
@@ -44,10 +44,11 @@ class Game():
         self.asteroid_manager = AsteroidManager(loaded_space_frames_full, self.pola_asteroid)
         self.enemy_manager = EnemyManager(loaded_space_frames, self.player, music_obj, 5, self.shoot_obj, self.WORLD_RADIUS, self.asteroid_manager)
 
-        self.level_manager = level_manager.LevelManager()
         self.colision_obj = collisions.Collision(music_obj, cxx, cyy, self.enemy_manager)
         self.radar_obj = radar.Radar(cxx, cyy, 200, self.WORLD_RADIUS)
         self.game_controller = ui.GameController(self.player_shoot, events_obj, self.player, cxx, cyy, loaded_space_frames_full, clock, self.level_manager, self.colision_obj, self.enemy_manager)
+        self.level_manager = level_manager.LevelManager(self.enemy_manager, self.game_controller.ui)
+        
         self.paused = False
         self.dict = None
 

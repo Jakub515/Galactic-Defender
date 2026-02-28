@@ -1,0 +1,67 @@
+{
+    "level_1": {
+        "max-enemy": 5,
+        "max-xp": 50,
+        "enemy-data": [
+            {"type": "scout", "prawdopodobienstwo": 70},
+            {"type": "fighter", "prawdopodobienstwo": 25},
+            {"type": "bomber", "prawdopodobienstwo": 5}
+        ],
+        "rewards": {
+            "reward_1": {"_comment": "+ x do maksymalnej prędkośći", "max_speed": 5},
+            "reward_2": {"_comment": "+ x do aktualnej zmiennej max_hp", "max_hp": 5}
+        }
+    },
+    "level_2": {
+        "max-enemy": 8,
+        "max-xp": 120,
+        "enemy-data": [
+            {"type": "scout", "prawdopodobienstwo": 50},
+            {"type": "fighter", "prawdopodobienstwo": 40},
+            {"type": "bomber", "prawdopodobienstwo": 10}
+        ],
+        "rewards": {
+            "reward_1": {"_comment": "+ x do maksymalnej prędkośći", "max_speed": 5},
+            "reward_2": {"_comment": "+ x do aktualnej zmiennej max_hp", "max_hp": 5}
+        }
+    },
+    "level_3": {
+        "max-enemy": 12,
+        "max-xp": 250,
+        "enemy-data": [
+            {"type": "scout", "prawdopodobienstwo": 30},
+            {"type": "fighter", "prawdopodobienstwo": 50},
+            {"type": "bomber", "prawdopodobienstwo": 20}
+        ],
+        "rewards": {
+            "reward_1": {"_comment": "+ x do maksymalnej prędkośći", "max_speed": 5},
+            "reward_2": {"_comment": "+ x do aktualnej zmiennej max_hp", "max_hp": 5}
+        }
+    },
+    "level_4": {
+        "max-enemy": 18,
+        "max-xp": 500,
+        "enemy-data": [
+            {"type": "scout", "prawdopodobienstwo": 15},
+            {"type": "fighter", "prawdopodobienstwo": 60},
+            {"type": "bomber", "prawdopodobienstwo": 25}
+        ],
+        "rewards": {
+            "reward_1": {"_comment": "+ x do maksymalnej prędkośći", "max_speed": 5},
+            "reward_2": {"_comment": "+ x do aktualnej zmiennej max_hp", "max_hp": 5}
+        }
+    },
+    "level_5": {
+        "max-enemy": 25,
+        "max-xp": 1000,
+        "enemy-data": [
+            {"type": "scout", "prawdopodobienstwo": 5},
+            {"type": "fighter", "prawdopodobienstwo": 50},
+            {"type": "bomber", "prawdopodobienstwo": 45}
+        ],
+        "rewards": {
+            "reward_1": {"_comment": "+ x do maksymalnej prędkośći", "max_speed": 5},
+            "reward_2": {"_comment": "+ x do aktualnej zmiennej max_hp", "max_hp": 5}
+        }
+    }
+}

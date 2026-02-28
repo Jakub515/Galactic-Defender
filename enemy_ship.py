@@ -314,6 +314,8 @@ class EnemyManager:
         self.weapons_rockets = []
         self._init_weapons()
 
+        self.enemy_data_from_level_manager = []
+
     def _load_config(self, filename):
         try:
             with open(filename, 'r', encoding='utf-8') as f:
@@ -398,6 +400,14 @@ class EnemyManager:
             return source_list[idx]
         except (ValueError, TypeError, IndexError):
             return None
+        
+    def init_level(self, max_enemy, enemy_data):
+        self.max_enemies = max_enemy
+        self.enemy_data_from_level_manager = enemy_data
+
+
+    def end_level(self):
+        self.enemies = []
 
     def update(self, dt):
         living = [e for e in self.enemies if not e.is_dead]
@@ -409,15 +419,22 @@ class EnemyManager:
             spawn_pos = self.player_ref.player_pos + pygame.math.Vector2(math.cos(angle)*dist, math.sin(angle)*dist)
             
             if spawn_pos.length() < self.world_radius - 300:
-                type_name = random.choice(list(self.ENEMY_TYPES.keys()))
-                bot_config = self.ENEMY_TYPES[type_name]
+                #types = [e["type"] for e in self.enemy_data_from_level_manager]
+                weights = [e["prawdopodobienstwo"] for e in self.enemy_data_from_level_manager]
+                # 1. Losujesz (zwraca listę z jednym słownikiem)
+                selected_enemy = random.choices(self.enemy_data_from_level_manager, weights=weights, k=1)[0]
+
+                # 2. Wyciągasz nazwę (klucz "type" z Twojego JSONa)
+                selected_name = selected_enemy["type"]
+                #type_name = random.choice(list(self.ENEMY_TYPES.keys()))
+                bot_config = self.ENEMY_TYPES[selected_name]
                 
                 # --- KLUCZOWA POPRAWKA: dopasowanie do Twojego JSON (laser/rocket bez 's') ---
                 weapon_data = {
                     "laser": self._get_random_weapon(bot_config, "laser", self.weapons_lasers),
                     "rocket": self._get_random_weapon(bot_config, "rocket", self.weapons_rockets)
                 }
-                new_enemy = Enemy(type_name, bot_config, self.ship_frames, self.player_ref, 
+                new_enemy = Enemy(selected_name, bot_config, self.ship_frames, self.player_ref, 
                                  self.music_obj, self.shoot_obj, self, spawn_pos, 
                                  self.asteroid_manager, self.blue_fire_frames, weapon_data)
                 self.enemies.append(new_enemy)

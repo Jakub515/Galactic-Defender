@@ -1,13 +1,42 @@
-class LevelManager():
-    def __init__(self):
-        self.xp = 0
-        self.max_xp_list = [100,1000,10_000]
-        self.count = 0
-        self.level = 1
-        self.max_xp = self.max_xp_list[self.count]
+import json
+from typing import TYPE_CHECKING
 
-    def update(self):
+if TYPE_CHECKING:
+    from enemy_ship import EnemyManager
+    from ui import UI
+class LevelManager():
+    def __init__(self, enemy_manager: "EnemyManager", ui: "UI") -> None:
+        self.enemy_manager = enemy_manager
+        self.ui = ui
+
+        self.level = 1
+        self.xp = 0
+
+        self.json_config = self._load_json()
+        self.load_new_level(self.level)
+
+    def load_new_level(self, level: int):
+        self.enemy_manager.end_level()
+        level_data = self.json_config.get(f"level_{level}", {})
+        if level_data == {}:
+            print("Nie ma leveli do załadowania")
+            exit(404)
+        self.max_enemy = level_data.get("max-enemy", 0)
+        self.max_xp = level_data.get("max-xp", 1)
+        self.enemy_data = level_data.get("enemy-data", {})
+        self.rewards = level_data.get("rewards", {})
+        self.enemy_manager.init_level(self.max_enemy, self.enemy_data)
+        
+    
+    @staticmethod
+    def _load_json() -> dict:
+        with open('level_slownik.json', 'r') as f:
+            data = json.load(f)
+        return data
+
+    def update(self) -> None:
         if self.xp >= self.max_xp:
-            self.count += 1
             self.level += 1
-            self.max_xp = self.max_xp_list[self.count]
+            self.load_new_level(self.level)
+            
+            ret = self.ui.rewards_too_choose(self.rewards)

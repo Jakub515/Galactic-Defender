@@ -82,7 +82,8 @@ class Collision():
                     e_base = enemy_manager.ship_base_images[enemy.type_name]
                     r_en, _ = self.get_masked_data(e_base, enemy.pos, enemy.angle, id(enemy))
                     if r_en.clipline(old_pos.x, old_pos.y, shot_pos.x, shot_pos.y):
-                        level_manager.xp += shot["damage"]
+                        actual_damage = min(shot["damage"], enemy.hp)
+                        level_manager.xp += actual_damage
                         enemy.hp -= shot["damage"]
                         if enemy.hp <= 0: enemy.death()
                         shot_hit = True

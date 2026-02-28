@@ -122,6 +122,9 @@ class UI:
         if alpha < 255: scaled_icon.set_alpha(alpha)
         window.blit(scaled_icon, scaled_icon.get_rect(center=rect.center))
 
+    def rewards_too_choose(self, rewards):
+        pass # do implementacji
+
     def update(self, current_fps, dt):
         self.fps = current_fps
         self.pulse_time += dt
@@ -257,18 +260,18 @@ class UI:
 
         # Signal Bars
         for i in range(5):
-            bar_on = is_active and (min_d < (3500 - i * 600))
+            bar_on = (is_active and self.battle.active_set == 2) and (min_d < (3500 - i * 600))
             pygame.draw.rect(window, theme_color if bar_on else (40, 45, 55), (ui_x + 15, ui_y + 55 - (i*9), 12, 6))
 
         # Text Info
-        status_col = (0, 255, 180) if is_active else (250, 50, 50)
+        status_col = (0, 255, 180) if (is_active and self.battle.active_set == 2) else (250, 50, 50)
         window.blit(self.font.render("TARGETING COMPUTER", True, (140, 140, 150)), (ui_x + 40, ui_y + 12))
         
-        status_surf = self.font_big.render("SYSTEM ONLINE" if is_active else "NO TARGETS", True, status_col)
-        if not is_active: status_surf.set_alpha(int(150 + 105 * math.sin(self.pulse_time * 12)))
+        status_surf = self.font_big.render("SYSTEM ONLINE" if (is_active and self.battle.active_set == 2) else "NO TARGETS", True, status_col)
+        if not (is_active and self.battle.active_set == 2): status_surf.set_alpha(int(150 + 105 * math.sin(self.pulse_time * 12)))
         window.blit(status_surf, (ui_x + 40, ui_y + 28))
 
-        if is_active:
+        if (is_active and self.battle.active_set == 2):
             mode_txt = "MODE: CLOSEST" if self.last_celowanie_mode == 1 else "MODE: FORWARD ANGLE"
             window.blit(self.font.render(mode_txt, True, (0, 180, 255)), (ui_x + 40, ui_y + 52))
 
