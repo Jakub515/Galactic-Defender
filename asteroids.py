@@ -127,7 +127,6 @@ class AsteroidManager:
     def _precompute_all_rotations(self):
         """Zoptymalizowane generowanie cache'u (360 klatek na obrazek)."""
         all_unique_images = list(set(self.planet_images + self.meteor_images))
-        print(f"Caching {len(all_unique_images)} images (360 deg each)...")
         
         for img in all_unique_images:
             img_id = id(img)
@@ -135,7 +134,6 @@ class AsteroidManager:
             for angle in range(360):
                 # Rotacja i convert_alpha() dla optymalizacji RAM
                 ROTATION_CACHE[img_id][float(angle)] = pygame.transform.rotate(img, angle).convert_alpha()
-        print("Caching complete!")
 
     def resolve_overlaps(self, only_visible=True):
         active = [a for a in self.asteroids if a.is_visible] if only_visible else self.asteroids

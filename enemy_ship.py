@@ -380,7 +380,6 @@ class EnemyManager:
                     w["time-alive-all"],             # 6
                     w["steer-limit"]                 # 7
                 ])
-        print(f"Zasoby broni załadowane: Lasery: {len(self.weapons_lasers)}, Rakiety: {len(self.weapons_rockets)}")
 
     def _get_random_weapon(self, bot_config, weapon_key, source_list):
         """Pobiera losową broń na podstawie indeksów z JSON."""
