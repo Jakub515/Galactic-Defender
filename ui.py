@@ -247,7 +247,7 @@ class UI:
         min_d = min(dists) if dists else 9999
         
         is_active = min_d < 3000
-        self.battle.enemy_choose(self.last_celowanie_mode if is_active else 0, enemies)
+        self.battle.enemy_choose(self.last_celowanie_mode if is_active else 0)
 
         # Panel Drawing
         surf = pygame.Surface((panel_w, panel_h), pygame.SRCALPHA)

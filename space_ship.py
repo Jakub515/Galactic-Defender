@@ -266,7 +266,7 @@ class Battle():
         pygame.draw.circle(s, color, (radius, radius), radius, 3)
         return s
     
-    def enemy_choose(self, tryb: int, enemies_list):
+    def enemy_choose(self, tryb: int):
         # tryb = 1: najbliższy enemy
         # tryb = 2: najbliżej w stosunku do kąta obrócenia, nie za daleko od ekranu
         # Pobieramy listę wszystkich aktywnych wrogów
