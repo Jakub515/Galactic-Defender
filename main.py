@@ -46,8 +46,9 @@ class Game():
 
         self.colision_obj = collisions.Collision(music_obj, cxx, cyy, self.enemy_manager)
         self.radar_obj = radar.Radar(cxx, cyy, 200, self.WORLD_RADIUS)
-        self.game_controller = ui.GameController(self.player_shoot, events_obj, self.player, cxx, cyy, loaded_space_frames_full, clock, self.level_manager, self.colision_obj, self.enemy_manager)
-        self.level_manager = level_manager.LevelManager(self.enemy_manager, self.game_controller.ui)
+        self.level_manager = level_manager.LevelManager(self.enemy_manager)
+        self.game_controller = ui.GameController(self.player_shoot, events_obj, self.player, cxx, cyy, loaded_space_frames_full, clock, self.level_manager, self.colision_obj, self.enemy_manager, self.player_parameters)
+        self.level_manager.init_additional_settings(self.game_controller.ui)
         
         self.paused = False
         self.dict = None

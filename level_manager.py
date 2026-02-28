@@ -5,15 +5,17 @@ if TYPE_CHECKING:
     from enemy_ship import EnemyManager
     from ui import UI
 class LevelManager():
-    def __init__(self, enemy_manager: "EnemyManager", ui: "UI") -> None:
+    def __init__(self, enemy_manager: "EnemyManager") -> None:
         self.enemy_manager = enemy_manager
-        self.ui = ui
 
         self.level = 1
         self.xp = 0
 
         self.json_config = self._load_json()
         self.load_new_level(self.level)
+
+    def init_additional_settings(self, ui: "UI"):
+        self.ui = ui
 
     def load_new_level(self, level: int):
         self.enemy_manager.end_level()
@@ -30,7 +32,7 @@ class LevelManager():
     
     @staticmethod
     def _load_json() -> dict:
-        with open('level_slownik.json', 'r') as f:
+        with open('level_slownik.json', 'r', encoding='utf-8') as f:
             data = json.load(f)
         return data
 
@@ -39,4 +41,4 @@ class LevelManager():
             self.level += 1
             self.load_new_level(self.level)
             
-            ret = self.ui.rewards_too_choose(self.rewards)
+            self.ui.rewards_too_choose(self.rewards)

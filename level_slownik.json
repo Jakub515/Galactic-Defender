@@ -8,8 +8,8 @@
             {"type": "bomber", "prawdopodobienstwo": 5}
         ],
         "rewards": {
-            "reward_1": {"_comment": "+ x do maksymalnej prędkośći", "max_speed": 5},
-            "reward_2": {"_comment": "+ x do aktualnej zmiennej max_hp", "max_hp": 5}
+            "reward_1": {"_comment": "+ x do maksymalnej prędkośći", "max_speed": 5, "text": "+ {var} do maksymalnej prędkości"},
+            "reward_2": {"_comment": "+ x do aktualnej zmiennej max_hp", "max_hp": 5, "text": "+ {var} do maksymalnego życia"}
         }
     },
     "level_2": {
@@ -21,8 +21,8 @@
             {"type": "bomber", "prawdopodobienstwo": 10}
         ],
         "rewards": {
-            "reward_1": {"_comment": "+ x do maksymalnej prędkośći", "max_speed": 5},
-            "reward_2": {"_comment": "+ x do aktualnej zmiennej max_hp", "max_hp": 5}
+            "reward_1": {"_comment": "+ x do maksymalnej prędkośći", "max_speed": 5, "text": "+ {var} do maksymalnej prędkości"},
+            "reward_2": {"_comment": "+ x do aktualnej zmiennej max_hp", "max_hp": 5, "text": "+ {var} do maksymalnego życia"}
         }
     },
     "level_3": {
@@ -34,8 +34,8 @@
             {"type": "bomber", "prawdopodobienstwo": 20}
         ],
         "rewards": {
-            "reward_1": {"_comment": "+ x do maksymalnej prędkośći", "max_speed": 5},
-            "reward_2": {"_comment": "+ x do aktualnej zmiennej max_hp", "max_hp": 5}
+            "reward_1": {"_comment": "+ x do maksymalnej prędkośći", "max_speed": 5, "text": "+ {var} do maksymalnej prędkości"},
+            "reward_2": {"_comment": "+ x do aktualnej zmiennej max_hp", "max_hp": 5, "text": "+ {var} do maksymalnego życia"}
         }
     },
     "level_4": {
@@ -47,8 +47,8 @@
             {"type": "bomber", "prawdopodobienstwo": 25}
         ],
         "rewards": {
-            "reward_1": {"_comment": "+ x do maksymalnej prędkośći", "max_speed": 5},
-            "reward_2": {"_comment": "+ x do aktualnej zmiennej max_hp", "max_hp": 5}
+            "reward_1": {"_comment": "+ x do maksymalnej prędkośći", "max_speed": 5, "text": "+ {var} do maksymalnej prędkości"},
+            "reward_2": {"_comment": "+ x do aktualnej zmiennej max_hp", "max_hp": 5, "text": "+ {var} do maksymalnego życia"}
         }
     },
     "level_5": {
@@ -60,8 +60,8 @@
             {"type": "bomber", "prawdopodobienstwo": 45}
         ],
         "rewards": {
-            "reward_1": {"_comment": "+ x do maksymalnej prędkośći", "max_speed": 5},
-            "reward_2": {"_comment": "+ x do aktualnej zmiennej max_hp", "max_hp": 5}
+            "reward_1": {"_comment": "+ x do maksymalnej prędkośći", "max_speed": 5, "text": "+ {var} do maksymalnej prędkości"},
+            "reward_2": {"_comment": "+ x do aktualnej zmiennej max_hp", "max_hp": 5, "text": "+ {var} do maksymalnego życia"}
         }
     }
 }

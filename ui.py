@@ -4,15 +4,15 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from space_ship import SpaceShip
-    from space_ship import Battle
+    from space_ship import Battle, Parameters
     from event import Event
     from level_manager import LevelManager
     from collisions import Collision
     from enemy_ship import EnemyManager
 
 class GameController:
-    def __init__(self, battle: "Battle", event_obj: "Event", player: "SpaceShip", cxx: int, cyy: int, loaded_images: dict, clock: pygame.time.Clock, level_manager: "LevelManager", collision: "Collision", enemy_manager: "EnemyManager"):
-        self.ui = UI(event_obj, cxx, cyy, loaded_images, battle, player, level_manager, enemy_manager)
+    def __init__(self, battle: "Battle", event_obj: "Event", player: "SpaceShip", cxx: int, cyy: int, loaded_images: dict, clock: pygame.time.Clock, level_manager: "LevelManager", collision: "Collision", enemy_manager: "EnemyManager", param: "Parameters"):
+        self.ui = UI(event_obj, cxx, cyy, loaded_images, battle, player, level_manager, enemy_manager, param)
         self.input_handler = InputHandler(event_obj, player, battle, self.ui, collision, enemy_manager)
         self.clock = clock
 
@@ -59,9 +59,12 @@ class InputHandler:
             self.ui_obj.last_celowanie_mode = 1
         elif self.event_obj.key_t:
             self.ui_obj.last_celowanie_mode = 2
+        
+        self.ui_obj.reward_1_choosed = self.event_obj.key_o
+        self.ui_obj.reward_2_choosed = self.event_obj.key_p
 
 class UI:
-    def __init__(self, event_obj: "Event", screen_width: int, screen_height: int, images: dict, battle: "Battle", space_ship: "SpaceShip", level_manager: "LevelManager", enemy_manager: "EnemyManager"):
+    def __init__(self, event_obj: "Event", screen_width: int, screen_height: int, images: dict, battle: "Battle", space_ship: "SpaceShip", level_manager: "LevelManager", enemy_manager: "EnemyManager", param: "Parameters"):
         self.event_obj = event_obj
         self.images = images
         self.battle = battle
@@ -70,6 +73,7 @@ class UI:
         self.space_ship = space_ship
         self.level_manager = level_manager
         self.enemy_manager = enemy_manager
+        self.space_ship_parameters = param
         
         self.displayed_hp = space_ship.hp
         self.max_hp = 100
@@ -100,6 +104,11 @@ class UI:
 
         self.last_celowanie_mode = 1
 
+        self.reward_1_choosed = False
+        self.reward_2_choosed = False
+        self.active_rewards = {}  # Przechowuje (funkcja, tekst) dla obu nagród
+        self.show_reward_selection = False
+
     def get_hp_color(self, ratio):
         # Zabezpieczenie, aby ratio było w przedziale 0.0 - 1.0
         ratio = max(0.0, min(1.0, ratio))
@@ -122,8 +131,91 @@ class UI:
         if alpha < 255: scaled_icon.set_alpha(alpha)
         window.blit(scaled_icon, scaled_icon.get_rect(center=rect.center))
 
+    def get_upgrade_action(self, reward_data):
+        methods_map = {
+            "max_speed": self.space_ship_parameters.add_max_speed,
+            "max_hp": self.space_ship_parameters.add_max_hp
+        }
+
+        for key, value in reward_data.items():
+            if key in methods_map:
+                action = lambda k=key, v=value: methods_map[k](v)
+                raw_text = reward_data.get("text", "Bonus")
+                formatted_text = raw_text.replace("{var}", str(value))
+                return action, formatted_text
+        
+        return (lambda: None), "Błąd w pliku json 1203"
+
     def rewards_too_choose(self, rewards):
-        pass # do implementacji
+        """Wywoływane przez Level Managera przy awansie"""
+        # Przygotowujemy dane dla obu nagród
+        act1, txt1 = self.get_upgrade_action(rewards.get("reward_1", {}))
+        act2, txt2 = self.get_upgrade_action(rewards.get("reward_2", {}))
+        
+        self.active_rewards = {
+            "1": {"action": act1, "text": txt1},
+            "2": {"action": act2, "text": txt2}
+        }
+        self.show_reward_selection = True
+
+    def _handle_reward_input(self):
+        # Sprawdzamy, czy w ogóle mamy aktywne nagrody
+        if not self.show_reward_selection or not self.active_rewards:
+            return
+        
+        # Używamy .get(), aby VS Code przestał krzyczeć o potencjalne błędy kluczy
+        reward1 = self.active_rewards.get("1")
+        reward2 = self.active_rewards.get("2")
+
+        if self.reward_1_choosed and reward1:
+            self.show_reward_selection = False # Wyłączamy UI zanim wywołamy akcję
+            reward1["action"]() 
+            self._close_rewards()
+            
+        elif self.reward_2_choosed and reward2:
+            self.show_reward_selection = False
+            reward2["action"]()
+            self._close_rewards()
+
+    def _close_rewards(self):
+        self.show_reward_selection = False
+        self.active_rewards = None
+
+    def _draw_reward_boxes(self, window):
+        """Rysuje dwa boxy na środku ekranu"""
+        if not self.show_reward_selection or not self.active_rewards:
+            return
+
+        # Przyciemnienie tła gry
+        overlay = pygame.Surface((self.cxx, self.cyy), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 180))
+        window.blit(overlay, (0, 0))
+
+        # Konfiguracja boxów
+        box_w, box_h = 400, 150
+        gap = 75
+        start_x = (self.cxx - (2 * box_w + gap)) // 2
+        y = (self.cyy - box_h) // 2
+
+        keys_to_choose = ("O","P")
+        for i, key in enumerate(["1", "2"]):
+            rect = pygame.Rect(start_x + i * (box_w + gap), y, box_w, box_h)
+            
+            # Rysowanie boxa
+            pygame.draw.rect(window, (20, 30, 50), rect, border_radius=15)
+            pygame.draw.rect(window, (0, 150, 255), rect, 3, border_radius=15)
+
+            # Tekst nagrody
+            reward_txt = self.active_rewards[key]["text"]
+            txt_surf = self.font_big.render(reward_txt, True, (255, 255, 255))
+            txt_rect = txt_surf.get_rect(center=(rect.centerx, rect.centery - 20))
+            window.blit(txt_surf, txt_rect)
+
+            # Instrukcja klawisza
+            key_surf = self.font.render(f"Naciśnij [{keys_to_choose[int(key)-1]}] aby wybrać", True, (0, 200, 255))
+            key_rect = key_surf.get_rect(center=(rect.centerx, rect.centery + 30))
+            window.blit(key_surf, key_rect)
+
 
     def update(self, current_fps, dt):
         self.fps = current_fps
@@ -140,6 +232,8 @@ class UI:
         force = (self.target_x - self.frame_x) * self.spring_k
         self.frame_vel = (self.frame_vel + force) * self.friction
         self.frame_x += self.frame_vel
+
+        self._handle_reward_input()
 
     def draw(self, window):
         # 1. Background Overlay
@@ -239,6 +333,8 @@ class UI:
         
         ship = self.battle.player_main_class
         self._draw_skill_bar(window, start_x + total_w + 30, "Booster", 1.0 - (ship.boost_cooldown / ship.max_boost_cooldown), (255, 150, 0))
+
+        self._draw_reward_boxes(window)
 
     def _draw_targeting_module(self, window, theme_color):
         ui_x, ui_y = 25, self.cyy - 105

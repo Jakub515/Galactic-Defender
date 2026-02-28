@@ -37,6 +37,12 @@ class Parameters:
         self.weapons = []
         self.weapons_2 = []
         self._load_weapons_from_config("player_slownik.json", ship_frames) #
+
+    def add_max_hp(self, max_hp: int) -> None:
+        self.max_hp += max_hp
+
+    def add_max_speed(self, max_speed: int) -> None:
+        self.max_speed += max_speed
         
     
     def _load_weapons_from_config(self, filename: str, ship_frames: dict):
@@ -70,26 +76,27 @@ class Parameters:
 
 class Battle():
     def __init__(self, player_main_class: "SpaceShip", ship_frames: dict, ship_audio_path:list|tuple, cxx:int, cyy:int, player_pos:list|tuple, music: "MusicManager", shoot_obj: "Shoot", parameters: "Parameters"):
+        self.parameters = parameters
+        
         self.shoot_obj = shoot_obj
         self.music_obj = music
         self.ship_frames = ship_frames
         self.ship_audio_path = ship_audio_path
         self.player_main_class = player_main_class
-        self.parameters = parameters
 
         # --- DYNAMICZNE WCZYTYWANIE BRONI ---
-        self.weapons = self.parameters.weapons
-        self.weapons_2 = self.parameters.weapons_2
+        #self.weapons = self.parameters.weapons
+        #self.weapons_2 = self.parameters.weapons_2
         
         # Inicjalizacja timerów na podstawie wczytanych danych (indeks 3 to cooldown)
-        self.weapon_timers = [w[3] for w in self.weapons] #
-        self.weapon_timers_2 = [w[3] for w in self.weapons_2] #
+        self.weapon_timers = [w[3] for w in parameters.weapons] 
+        self.weapon_timers_2 = [w[3] for w in parameters.weapons_2]
         
         self.current_weapon = 0
         self.active_set = 1
         self.want_to_shoot = False
         self.switch_cooldown = 0.0
-        self.max_switch_time = self.parameters.max_switch_time
+        #self.max_switch_time = self.parameters.max_switch_time
 
         # --- OSŁONY I COOLDOWN ---
         try:
@@ -103,13 +110,33 @@ class Battle():
             
         self.shield_active = False
         self.shield_timer = 0 
-        self.shield_max_timer = self.parameters.shield_max_timer
+        #self.shield_max_timer = self.parameters.shield_max_timer
         self.shield_angle = 0 
         self.shield_cooldown = 0.0
-        self.max_shield_cooldown = self.parameters.max_shield_cooldown
+        #self.max_shield_cooldown = self.parameters.max_shield_cooldown
         self.enemy_selected = None
 
         self.tryb_naprowadzania = 0
+
+    @property
+    def max_switch_time(self):
+        return self.parameters.max_switch_time
+
+    @property
+    def max_shield_cooldown(self):
+        return self.parameters.max_shield_cooldown
+
+    @property
+    def shield_max_timer(self):
+        return self.parameters.shield_max_timer
+
+    @property
+    def weapons(self):
+        return self.parameters.weapons
+
+    @property
+    def weapons_2(self):
+        return self.parameters.weapons_2
 
     
     def fire(self, active:bool): 
@@ -131,7 +158,7 @@ class Battle():
             if not self.shield_active and self.shield_cooldown <= 0:
                 self.shield_active = True
                 self.shield_timer = timer
-                self.shield_max_timer = timer
+                #self.shield_max_timer = timer
                 self.shield_cooldown = self.max_shield_cooldown
 
     def _handle_shooting(self, forward_dir:pygame.math.Vector2):
@@ -274,11 +301,12 @@ class Battle():
 
 class SpaceShip():
     def __init__(self, ship_frames: dict, ship_audio_path:list|tuple, cxx:int, cyy:int, player_pos:list|tuple, music: "MusicManager", shoot_obj: "Shoot", parameters: "Parameters"):
+        self.parameters = parameters
+        
         self.shoot_obj = shoot_obj
         self.music_obj = music
         self.ship_frames = ship_frames
         self.ship_audio_path = ship_audio_path
-        self.parameters = parameters
         
         self.is_destroyed = False
         self.debris_particles = []
@@ -316,9 +344,9 @@ class SpaceShip():
         self.angular_friction = 0.90               
         self.max_angular_velocity = 7.0  
 
-        self.thrust_power = self.parameters.thrust_power               
-        self.max_speed = self.parameters.max_speed               
-        self.boost_speed = self.parameters.boost_speed
+        # self.thrust_power = self.parameters.thrust_power               
+        # self.max_speed = self.parameters.max_speed               
+        # self.boost_speed = self.parameters.boost_speed
         self.linear_friction = self.parameters.linear_friction              
         self.braking_force = self.parameters.braking_force      
                     
@@ -332,12 +360,28 @@ class SpaceShip():
         self.is_boost_ready = True
 
         self.hp = self.parameters.hp  
-        self.max_hp = self.parameters.max_hp
+        # self.max_hp = self.parameters.max_hp
         self.hp_timer = 0.0          # Licznik czasu
         self.hp_interval = 1.0       # Co ile sekund ma wystąpić akcja (1.0 = 1 sekunda)
         self.hp_reg_speed = self.parameters.hp_reg_speed
 
         self.ship_rot = self.actual_frame
+
+    @property
+    def max_hp(self):
+        return self.parameters.max_hp
+
+    @property
+    def max_speed(self):
+        return self.parameters.max_speed
+
+    @property
+    def boost_speed(self):
+        return self.parameters.boost_speed
+
+    @property
+    def thrust_power(self):
+        return self.parameters.thrust_power
 
     def destroy_cause_collision(self):
         if self.is_destroyed: return
