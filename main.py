@@ -94,7 +94,7 @@ class Game():
         # Obiekty świata (używają offsetu kamery)
         off_x, off_y = self.camera.offset.x, self.camera.offset.y
         self.shoot_obj.draw(window, off_x, off_y)
-        self.asteroid_manager.draw(window, off_x, off_y)
+        self.asteroid_manager.draw(window, off_x, off_y, cxx, cyy)
         self.enemy_manager.draw(window, off_x, off_y)
         
         # Gracz (pozycja przeliczona przez kamerę)

@@ -52,8 +52,12 @@ class Asteroid:
         self.gravity_range_sq = self.gravity_range ** 2
         self.is_visible = False
 
+        self.rect = pygame.Rect(0, 0, self.radius * 2, self.radius * 2)
+        self.rect.center = (int(self.pos.x), int(self.pos.y))
+
     def update(self, dt: float, player: "SpaceShip", enemies: list):
         self.pos += self.velocity
+        self.rect.center = (int(self.pos.x), int(self.pos.y))
         self.angle = (self.angle + self.rotation_speed) % 360
         if self.is_visible:
             self._apply_gravity(player, dt)
@@ -73,16 +77,14 @@ class Asteroid:
             target.velocity += gravity_vector
 
     def draw(self, window: pygame.Surface, cam_x: float, cam_y: float, screen_w: int, screen_h: int):
+        # Tutaj rysujemy używając już obliczonego wcześniej self.is_visible
         draw_x = self.pos.x - cam_x
         draw_y = self.pos.y - cam_y
-        margin = self.radius + 50
         
-        self.is_visible = -margin < draw_x < screen_w + margin and -margin < draw_y < screen_h + margin
-        
-        if self.is_visible:
-            rotated = get_rotated_asteroid(self.original_image, self.angle)
-            rect = rotated.get_rect(center=(draw_x, draw_y))
-            window.blit(rotated, rect.topleft)
+        rotated = get_rotated_asteroid(self.original_image, self.angle)
+        # Pobieramy rect tylko do blitowania (lokalny dla ekranu)
+        rect = rotated.get_rect(center=(int(draw_x), int(draw_y)))
+        window.blit(rotated, rect.topleft)
 
 class AsteroidManager:
     def __init__(self, ship_frames: dict, zones_list: list):
@@ -155,7 +157,12 @@ class AsteroidManager:
         for asteroid in self.asteroids:
             asteroid.update(dt, player, enemies)
 
-    def draw(self, window: pygame.Surface, cam_x: float, cam_y: float):
-        sw, sh = window.get_size()
+    def draw(self, window: pygame.Surface, cam_x: float, cam_y: float, screen_w: int, screen_h: int):
+        view_rect = pygame.Rect(cam_x - 150, cam_y - 150, screen_w + 300, screen_h + 300)
+        
         for asteroid in self.asteroids:
-            asteroid.draw(window, cam_x, cam_y, sw, sh)
+            if view_rect.colliderect(asteroid.rect):
+                asteroid.is_visible = True
+                asteroid.draw(window, cam_x, cam_y, screen_w, screen_h)
+            else:
+                asteroid.is_visible = False
