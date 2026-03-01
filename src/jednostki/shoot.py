@@ -4,7 +4,7 @@ import time
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from enemy_ship import EnemyManager, Enemy
+    from enemy_ship import EnemyManager
 
 class Shoot():
     def __init__(self, images: dict):

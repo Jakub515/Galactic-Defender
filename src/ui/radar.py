@@ -2,9 +2,9 @@ import pygame
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from asteroids import AsteroidManager
-    from space_ship import SpaceShip
-    from enemy_ship import EnemyManager
+    from jednostki.asteroids import AsteroidManager
+    from jednostki.space_ship import SpaceShip
+    from jednostki.enemy_ship import EnemyManager
 
 class Radar:
     def __init__(self, screen_width: int, screen_height: int, radar_size:int=200, world_radius:int=10000, zoom_radius:int=4000):

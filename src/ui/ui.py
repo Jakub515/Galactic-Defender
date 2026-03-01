@@ -3,12 +3,11 @@ import math
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from space_ship import SpaceShip
-    from space_ship import Battle, Parameters
-    from event import Event
-    from level_manager import LevelManager
-    from collisions import Collision
-    from enemy_ship import EnemyManager
+    from jednostki.space_ship import Battle, Parameters, SpaceShip
+    from jednostki.enemy_ship import EnemyManager
+    from core.event import Event
+    from core.level_manager import LevelManager
+    from utils.collisions import Collision
 
 class GameController:
     def __init__(self, battle: "Battle", event_obj: "Event", player: "SpaceShip", cxx: int, cyy: int, loaded_images: dict, clock: pygame.time.Clock, level_manager: "LevelManager", collision: "Collision", enemy_manager: "EnemyManager", param: "Parameters"):
@@ -20,8 +19,8 @@ class GameController:
         self.input_handler.update()
         self.ui.update(self.clock.get_fps(), dt)
 
-    def draw(self, window: pygame.Surface, dt: float):
-        self.ui.draw(window, dt)
+    def draw(self, window: pygame.Surface):
+        self.ui.draw(window)
 
 class InputHandler:
     def __init__(self, event_obj: "Event", player_obj: "SpaceShip", player_shoot: "Battle", ui_obj: "UI", collision:"Collision", enemy_manager: "EnemyManager"):
@@ -210,7 +209,7 @@ class UI:
         
         self.enemy_manager.can_start_new_level = True
 
-    def _draw_reward_boxes(self, window, dt):
+    def _draw_reward_boxes(self, window):
         """Rysuje dwa boxy na środku ekranu"""
         if not self.show_reward_selection or not self.active_rewards:
             return
@@ -269,7 +268,7 @@ class UI:
             self.reward_shown_timer += dt
         self._handle_reward_input()
 
-    def draw(self, window, dt):
+    def draw(self, window):
         # 1. Background Overlay
         overlay = pygame.Surface((self.cxx, 115), pygame.SRCALPHA)
         pygame.draw.rect(overlay, (0, 0, 0, 140), (0, 0, self.cxx, 115))
@@ -368,7 +367,7 @@ class UI:
         ship = self.battle.player_main_class
         self._draw_skill_bar(window, start_x + total_w + 30, "Booster", 1.0 - (ship.boost_cooldown / ship.max_boost_cooldown), (255, 150, 0))
 
-        self._draw_reward_boxes(window, dt)
+        self._draw_reward_boxes(window)
 
     def _draw_targeting_module(self, window, theme_color):
         ui_x, ui_y = 25, self.cyy - 105

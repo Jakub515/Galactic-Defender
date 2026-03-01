@@ -1,15 +1,13 @@
 import pygame
-import math
-import itertools
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from music import MusicManager
-    from shoot import Shoot
-    from asteroids import AsteroidManager
-    from space_ship import SpaceShip, Battle
-    from enemy_ship import EnemyManager, Enemy
-    from level_manager import LevelManager
+    from core.level_manager import LevelManager
+    from jednostki.shoot import Shoot
+    from jednostki.asteroids import AsteroidManager
+    from jednostki.space_ship import SpaceShip, Battle
+    from jednostki.enemy_ship import EnemyManager
 
 class Collision():
     def __init__(self, mixer_obj: "MusicManager", cxx: int, cyy: int, enemy_manager: "EnemyManager"):
@@ -112,7 +110,7 @@ class Collision():
                         player.hp -= shot["damage"]
                     else:
                         if not player.is_destroyed:
-                            self.music_obj.play("images/audio/kenney_sci-fi-sounds/forceField_001.wav", 0.25)
+                            self.music_obj.play("./data/images/audio/kenney_sci-fi-sounds/forceField_001.wav", 0.25)
                     shot_hit = True
                     if player.hp <= 0: return True
 

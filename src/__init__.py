@@ -1,0 +1,7 @@
+__version__ = "0.0.1"
+__author__ = "Jakub Szczurek"
+__email__ = "jakub515.szczurek@gmail.com"
+__license__ = "MIT"
+__copyright__ = "Copyright 2026, Jakub Szczurek"
+__description__ = "Galaxy defender pygame space shooter game."
+__status__ = "Prototype"

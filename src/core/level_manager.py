@@ -2,8 +2,9 @@ import json
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from enemy_ship import EnemyManager
-    from ui import UI
+    from jednostki.enemy_ship import EnemyManager
+    from ui.ui import UI
+    
 class LevelManager():
     def __init__(self, enemy_manager: "EnemyManager") -> None:
         self.enemy_manager = enemy_manager
@@ -32,7 +33,7 @@ class LevelManager():
     
     @staticmethod
     def _load_json() -> dict:
-        with open('level_slownik.json', 'r', encoding='utf-8') as f:
+        with open('./data/level_slownik.json', 'r', encoding='utf-8') as f:
             data = json.load(f)
         return data
 

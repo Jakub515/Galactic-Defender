@@ -6,8 +6,8 @@ class MusicManager():
         self.audio_files = audio_files
         pygame.mixer.init()
         pygame.mixer.set_num_channels(1024)
-        if os.path.exists("images/audio/star_wars.mp3"):
-            pygame.mixer.music.load("images/audio/star_wars.mp3")
+        if os.path.exists("./data/images/audio/star_wars.mp3"):
+            pygame.mixer.music.load("./data/images/audio/star_wars.mp3")
             pygame.mixer.music.set_volume(0.3)
             pygame.mixer.music.play(-1)
 

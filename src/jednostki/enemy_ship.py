@@ -5,7 +5,7 @@ import json
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from music import MusicManager
+    from utils.music import MusicManager
     from shoot import Shoot
     from asteroids import AsteroidManager
     from space_ship import SpaceShip
@@ -96,7 +96,7 @@ class Enemy:
         if not self.is_dead:
             self.is_dead = True
             if self.music_obj:
-                self.music_obj.play("images/audio/sfx_exp_medium4.wav", 0.2)
+                self.music_obj.play("./data/images/audio/sfx_exp_medium4.wav", 0.2)
             colors = [(0, 150, 255), (80, 80, 255), (40, 40, 40), (200, 200, 255)]
             for _ in range(random.randint(12, 18)):
                 self.debris_list.append(Debris(self.pos, self.velocity, random.choice(colors)))
@@ -261,7 +261,7 @@ class Enemy:
                 "steer-limit": weapon_info[7]                  # Poprawny indeks 7
             })
         if self.music_obj:
-            sfx = "images/audio/sfx_laser2.wav" if is_rocket else "images/audio/sfx_laser1.wav"
+            sfx = "./data/images/audio/sfx_laser2.wav" if is_rocket else "./data/images/audio/sfx_laser1.wav"
             self.music_obj.play(sfx, 0.25)
 
     def draw(self, window: pygame.Surface, camera_x: float, camera_y: float):
@@ -308,7 +308,7 @@ class EnemyManager:
         self.level_transition_active = False  # NOWA FLAGA
 
         # --- ŁADOWANIE KONFIGURACJI ---
-        self.config_all = self._load_config("enemie_slownik.json")
+        self.config_all = self._load_config("./data/enemie_slownik.json")
         self.ENEMY_TYPES = self.config_all.get("enemy_types", {})
 
         # --- CACHE GRAFIKI ---
