@@ -1,8 +1,7 @@
-1. konfiguracja ilości i częstotliwości enemie w json i w init dać
-2. możliwość zrobienia leveli na podstawie danych w json
+1. None
 
 jakiś czas temu mieżone:
-liczba wierszy plików .py:   2364
-liczba wierszy plików .json: 308
+liczba wierszy plików .py:   2743
+liczba wierszy plików .json: 513
 liczba wierszy plików .md    142
-liczba wierszy na projekt    2814
+liczba wierszy na projekt    3398

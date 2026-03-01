@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from utils.music import MusicManager
     from shoot import Shoot
-    from src.jednostki.enemy_ship.enemy_ship import EnemyManager
+    from jednostki.enemy_ship.enemy_manager import EnemyManager
     from .ship import SpaceShip
     from .parameters import Parameters
 

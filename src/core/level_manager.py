@@ -2,7 +2,7 @@ import json
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from src.jednostki.enemy_ship.enemy_ship import EnemyManager
+    from jednostki.enemy_ship.enemy_manager import EnemyManager
     from ui.ui import UI
     
 class LevelManager():
