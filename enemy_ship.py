@@ -89,6 +89,8 @@ class Enemy:
         self.weapon_timer = 0.0
 
         self.id = IDGenerator.get_new_id()
+        self.delete_now = False
+        self.end_of_level_flag = False
 
     def death(self):
         if not self.is_dead:
@@ -101,6 +103,11 @@ class Enemy:
 
     def update(self, dt: float):
         if self.hp <= 0 and not self.is_dead:
+            self.death()
+            
+        if self.end_of_level_flag == True:
+            self.delete_now = True
+            self.hp = 0 
             self.death()
 
         if self.is_dead:
@@ -284,6 +291,9 @@ class Enemy:
         angle_idx = int(self.angle % 360)
         rotated_ship = self.manager.ship_cache[self.type_name][angle_idx]
         window.blit(rotated_ship, rotated_ship.get_rect(center=(int(self.pos.x - camera_x), int(self.pos.y - camera_y))))
+        
+    def end_of_level(self):
+        self.end_of_level_flag = True
 class EnemyManager:
     def __init__(self, ship_frames, player_ref, music_obj, max_enemies, 
                  shoot_obj, world_radius, asteroid_manager):
@@ -295,6 +305,7 @@ class EnemyManager:
         self.world_radius = world_radius
         self.asteroid_manager = asteroid_manager
         self.enemies: list[Enemy] = []
+        self.level_transition_active = False  # NOWA FLAGA
 
         # --- ŁADOWANIE KONFIGURACJI ---
         self.config_all = self._load_config("enemie_slownik.json")
@@ -315,6 +326,8 @@ class EnemyManager:
         self._init_weapons()
 
         self.enemy_data_from_level_manager = []
+        
+        self.can_start_new_level = True # flaga z ui (odnośnie wyboru nagrody)
 
     def _load_config(self, filename):
         try:
@@ -402,47 +415,76 @@ class EnemyManager:
             return None
         
     def init_level(self, max_enemy, enemy_data):
+        """Wywoływane przy starcie nowego poziomu."""
         self.max_enemies = max_enemy
         self.enemy_data_from_level_manager = enemy_data
-
+        # Wyłączamy blokadę spawnu, bo nowy poziom został zainicjowany
+        self.level_transition_active = False 
 
     def end_level(self):
-        self.enemies = []
+        """Zamiast blokującej pętli while, tylko flagujemy i uciekamy."""
+        self.level_transition_active = True
+        for enemy in self.enemies:
+            enemy.end_of_level()
 
     def update(self, dt):
-        living = [e for e in self.enemies if not e.is_dead]
-        
-        if len(living) < self.max_enemies:
-            # Losowanie pozycji spawnu
-            angle = random.uniform(0, 2 * math.pi)
-            dist = random.uniform(1100, 1500)
-            spawn_pos = self.player_ref.player_pos + pygame.math.Vector2(math.cos(angle)*dist, math.sin(angle)*dist)
-            
-            if spawn_pos.length() < self.world_radius - 300:
-                #types = [e["type"] for e in self.enemy_data_from_level_manager]
-                weights = [e["prawdopodobienstwo"] for e in self.enemy_data_from_level_manager]
-                # 1. Losujesz (zwraca listę z jednym słownikiem)
-                selected_enemy = random.choices(self.enemy_data_from_level_manager, weights=weights, k=1)[0]
-
-                # 2. Wyciągasz nazwę (klucz "type" z Twojego JSONa)
-                selected_name = selected_enemy["type"]
-                #type_name = random.choice(list(self.ENEMY_TYPES.keys()))
-                bot_config = self.ENEMY_TYPES[selected_name]
-                
-                # --- KLUCZOWA POPRAWKA: dopasowanie do Twojego JSON (laser/rocket bez 's') ---
-                weapon_data = {
-                    "laser": self._get_random_weapon(bot_config, "laser", self.weapons_lasers),
-                    "rocket": self._get_random_weapon(bot_config, "rocket", self.weapons_rockets)
-                }
-                new_enemy = Enemy(selected_name, bot_config, self.ship_frames, self.player_ref, 
-                                 self.music_obj, self.shoot_obj, self, spawn_pos, 
-                                 self.asteroid_manager, self.blue_fire_frames, weapon_data)
-                self.enemies.append(new_enemy)
-
+        # 1. Zarządzanie listą przeciwników - usuwanie tych, którzy są martwi lub do skasowania
+        # Robimy to na początku, aby operować na aktualnej liście obiektów
         for enemy in self.enemies[:]:
             enemy.update(dt)
-            if enemy.is_dead and not enemy.debris_list:
+            
+            # Warunki usunięcia: 
+            # - flaga delete_now jest True (wymuszone kasowanie)
+            # - LUB jest martwy i skończył animację szczątków/wybuchu
+            if enemy.delete_now or (enemy.is_dead and not enemy.debris_list):
                 self.enemies.remove(enemy)
+
+        # 2. Logika spawnowania nowych przeciwników
+        # Dodajemy warunek: spawnuje TYLKO jeśli nie trwa zmiana poziomu
+        if (not self.level_transition_active) and self.can_start_new_level == True:
+            living = [e for e in self.enemies if not e.is_dead]
+            
+            if len(living) < self.max_enemies:
+                # Losowanie pozycji spawnu
+                angle = random.uniform(0, 2 * math.pi)
+                dist = random.uniform(1100, 1500)
+                spawn_pos = self.player_ref.player_pos + pygame.math.Vector2(math.cos(angle)*dist, math.sin(angle)*dist)
+                
+                # Sprawdzamy czy spawn mieści się w świecie i czy mamy dane o przeciwnikach dla tego poziomu
+                if spawn_pos.length() < self.world_radius - 300 and self.enemy_data_from_level_manager:
+                    
+                    # Pobieranie wag prawdopodobieństwa z danych poziomu
+                    weights = [e["prawdopodobienstwo"] for e in self.enemy_data_from_level_manager]
+                    
+                    # 1. Losowanie typu przeciwnika
+                    selected_enemy_data = random.choices(self.enemy_data_from_level_manager, weights=weights, k=1)[0]
+                    selected_name = selected_enemy_data["type"]
+                    
+                    # Pobranie konfiguracji bazowej dla tego typu
+                    bot_config = self.ENEMY_TYPES.get(selected_name)
+                    
+                    if bot_config:
+                        # --- PRZYGOTOWANIE BRONI ---
+                        weapon_data = {
+                            "laser": self._get_random_weapon(bot_config, "laser", self.weapons_lasers),
+                            "rocket": self._get_random_weapon(bot_config, "rocket", self.weapons_rockets)
+                        }
+                        
+                        # --- TWORZENIE INSTANCJI ---
+                        new_enemy = Enemy(
+                            selected_name, 
+                            bot_config, 
+                            self.ship_frames, 
+                            self.player_ref, 
+                            self.music_obj, 
+                            self.shoot_obj, 
+                            self, 
+                            spawn_pos, 
+                            self.asteroid_manager, 
+                            self.blue_fire_frames, 
+                            weapon_data
+                        )
+                        self.enemies.append(new_enemy)
 
     def draw(self, window, camera_x, camera_y):
         for enemy in self.enemies:

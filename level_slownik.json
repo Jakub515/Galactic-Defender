@@ -1,67 +1,205 @@
 {
     "level_1": {
-        "max-enemy": 5,
-        "max-xp": 50,
-        "enemy-data": [
-            {"type": "scout", "prawdopodobienstwo": 70},
-            {"type": "fighter", "prawdopodobienstwo": 25},
-            {"type": "bomber", "prawdopodobienstwo": 5}
-        ],
+        "max-enemy": 5, "max-xp": 50,
+        "enemy-data": [{"type": "scout", "prawdopodobienstwo": 70}, {"type": "fighter", "prawdopodobienstwo": 25}, {"type": "bomber", "prawdopodobienstwo": 5}],
         "rewards": {
-            "reward_1": {"_comment": "+ x do maksymalnej prędkośći", "max_speed": 5, "text": "+ {var} do maksymalnej prędkości"},
-            "reward_2": {"_comment": "+ x do aktualnej zmiennej max_hp", "max_hp": 5, "text": "+ {var} do maksymalnego życia"}
+            "reward_1": {"max_speed": 1, "text": "+ {var} do maksymalnej prędkości"},
+            "reward_2": {"max_hp": 10, "text": "+ {var} do maksymalnego życia"}
         }
     },
     "level_2": {
-        "max-enemy": 8,
-        "max-xp": 120,
-        "enemy-data": [
-            {"type": "scout", "prawdopodobienstwo": 50},
-            {"type": "fighter", "prawdopodobienstwo": 40},
-            {"type": "bomber", "prawdopodobienstwo": 10}
-        ],
+        "max-enemy": 8, "max-xp": 120,
+        "enemy-data": [{"type": "scout", "prawdopodobienstwo": 50}, {"type": "fighter", "prawdopodobienstwo": 40}, {"type": "bomber", "prawdopodobienstwo": 10}],
         "rewards": {
-            "reward_1": {"_comment": "+ x do maksymalnej prędkośći", "max_speed": 5, "text": "+ {var} do maksymalnej prędkości"},
-            "reward_2": {"_comment": "+ x do aktualnej zmiennej max_hp", "max_hp": 5, "text": "+ {var} do maksymalnego życia"}
+            "reward_1": {"add_weapons_1_damage": 2, "text": "+ {var} do obrażeń Broni 1"},
+            "reward_2": {"reduce_weapons_1_reload": 0.05, "text": "- {var}s przeładowania Broni 1"}
         }
     },
     "level_3": {
-        "max-enemy": 12,
-        "max-xp": 250,
-        "enemy-data": [
-            {"type": "scout", "prawdopodobienstwo": 30},
-            {"type": "fighter", "prawdopodobienstwo": 50},
-            {"type": "bomber", "prawdopodobienstwo": 20}
-        ],
+        "max-enemy": 12, "max-xp": 250,
+        "enemy-data": [{"type": "scout", "prawdopodobienstwo": 30}, {"type": "fighter", "prawdopodobienstwo": 50}, {"type": "bomber", "prawdopodobienstwo": 20}],
         "rewards": {
-            "reward_1": {"_comment": "+ x do maksymalnej prędkośći", "max_speed": 5, "text": "+ {var} do maksymalnej prędkości"},
-            "reward_2": {"_comment": "+ x do aktualnej zmiennej max_hp", "max_hp": 5, "text": "+ {var} do maksymalnego życia"}
+            "reward_1": {"add_thrust_power": 0.1, "text": "+ {var} do siły ciągu"},
+            "reward_2": {"add_hp_reg_speed": 4, "text": "+ {var} do regeneracji HP"}
         }
     },
     "level_4": {
-        "max-enemy": 18,
-        "max-xp": 500,
-        "enemy-data": [
-            {"type": "scout", "prawdopodobienstwo": 15},
-            {"type": "fighter", "prawdopodobienstwo": 60},
-            {"type": "bomber", "prawdopodobienstwo": 25}
-        ],
+        "max-enemy": 18, "max-xp": 500,
+        "enemy-data": [{"type": "scout", "prawdopodobienstwo": 15}, {"type": "fighter", "prawdopodobienstwo": 60}, {"type": "bomber", "prawdopodobienstwo": 25}],
         "rewards": {
-            "reward_1": {"_comment": "+ x do maksymalnej prędkośći", "max_speed": 5, "text": "+ {var} do maksymalnej prędkości"},
-            "reward_2": {"_comment": "+ x do aktualnej zmiennej max_hp", "max_hp": 5, "text": "+ {var} do maksymalnego życia"}
+            "reward_1": {"add_shield_max_timer": 2, "text": "+ {var}s czasu trwania tarczy"},
+            "reward_2": {"add_max_shield_cooldown": 1, "text": "Szybsze odnawianie tarczy (+{var})"}
         }
     },
     "level_5": {
-        "max-enemy": 25,
-        "max-xp": 1000,
-        "enemy-data": [
-            {"type": "scout", "prawdopodobienstwo": 5},
-            {"type": "fighter", "prawdopodobienstwo": 50},
-            {"type": "bomber", "prawdopodobienstwo": 45}
-        ],
+        "max-enemy": 25, "max-xp": 1000,
+        "enemy-data": [{"type": "scout", "prawdopodobienstwo": 5}, {"type": "fighter", "prawdopodobienstwo": 50}, {"type": "bomber", "prawdopodobienstwo": 45}],
         "rewards": {
-            "reward_1": {"_comment": "+ x do maksymalnej prędkośći", "max_speed": 5, "text": "+ {var} do maksymalnej prędkości"},
-            "reward_2": {"_comment": "+ x do aktualnej zmiennej max_hp", "max_hp": 5, "text": "+ {var} do maksymalnego życia"}
+            "reward_1": {"add_weapons_2_damage": 5, "text": "+ {var} do obrażeń Broni 2 (Pociski)"},
+            "reward_2": {"add_weapons_2_steer_limit": 1.5, "text": "+ {var} do manewrowości pocisków"}
+        }
+    },
+    "level_6": {
+        "max-enemy": 28, "max-xp": 1600,
+        "enemy-data": [{"type": "scout", "prawdopodobienstwo": 5}, {"type": "fighter", "prawdopodobienstwo": 40}, {"type": "bomber", "prawdopodobienstwo": 55}],
+        "rewards": {
+            "reward_1": {"add_max_hp": 20, "text": "+ {var} do maksymalnego życia"},
+            "reward_2": {"reduce_linear_friction": 0.02, "text": "Zmniejszenie tarcia o {var} (lepszy dryf)"}
+        }
+    },
+    "level_7": {
+        "max-enemy": 32, "max-xp": 2400,
+        "enemy-data": [{"type": "fighter", "prawdopodobienstwo": 60}, {"type": "bomber", "prawdopodobienstwo": 40}],
+        "rewards": {
+            "reward_1": {"add_weapons_1_speed": 5, "text": "+ {var} do prędkości pocisków Broni 1"},
+            "reward_2": {"add_boost_speed": 2, "text": "+ {var} do prędkości dopalacza"}
+        }
+    },
+    "level_8": {
+        "max-enemy": 35, "max-xp": 3500,
+        "enemy-data": [{"type": "fighter", "prawdopodobienstwo": 40}, {"type": "bomber", "prawdopodobienstwo": 60}],
+        "rewards": {
+            "reward_1": {"reduce_max_switch_time": 1.0, "text": "Szybsza zmiana broni o {var}s"},
+            "reward_2": {"add_braking_force": 5, "text": "+ {var} do siły hamowania"}
+        }
+    },
+    "level_9": {
+        "max-enemy": 40, "max-xp": 5000,
+        "enemy-data": [{"type": "fighter", "prawdopodobienstwo": 20}, {"type": "bomber", "prawdopodobienstwo": 80}],
+        "rewards": {
+            "reward_1": {"add_weapons_2_time_alive": 1.5, "text": "+ {var}s życia pocisków Broni 2"},
+            "reward_2": {"reduce_weapons_2_reload": 0.2, "text": "- {var}s przeładowania Broni 2"}
+        }
+    },
+    "level_10": {
+        "max-enemy": 45, "max-xp": 7000,
+        "enemy-data": [{"type": "bomber", "prawdopodobienstwo": 100}],
+        "rewards": {
+            "reward_1": {"add_max_hp": 50, "text": "+ {var} do maksymalnego życia"},
+            "reward_2": {"add_hp_reg_speed": 5, "text": "+ {var} do regeneracji HP"}
+        }
+    },
+    "level_11": {
+        "max-enemy": 50, "max-xp": 10000,
+        "enemy-data": [{"type": "scout", "prawdopodobienstwo": 20}, {"type": "fighter", "prawdopodobienstwo": 40}, {"type": "bomber", "prawdopodobienstwo": 40}],
+        "rewards": {
+            "reward_1": {"add_max_boost_cooldown": 2, "text": "Szybsze odnawianie dopalacza (+{var})"},
+            "reward_2": {"add_max_speed": 0.2, "text": "+ {var} do maksymalnej prędkości"}
+        }
+    },
+    "level_12": {
+        "max-enemy": 55, "max-xp": 14000,
+        "enemy-data": [{"type": "fighter", "prawdopodobienstwo": 50}, {"type": "bomber", "prawdopodobienstwo": 50}],
+        "rewards": {
+            "reward_1": {"add_weapons_1_damage": 5, "text": "+ {var} do obrażeń Broni 1"},
+            "reward_2": {"reduce_weapons_1_reload": 0.1, "text": "- {var}s przeładowania Broni 1"}
+        }
+    },
+    "level_13": {
+        "max-enemy": 60, "max-xp": 19000,
+        "enemy-data": [{"type": "bomber", "prawdopodobienstwo": 100}],
+        "rewards": {
+            "reward_1": {"add_shield_max_timer": 3, "text": "+ {var}s czasu trwania tarczy"},
+            "reward_2": {"add_max_shield_cooldown": 2, "text": "Szybsze odnawianie tarczy (+{var})"}
+        }
+    },
+    "level_14": {
+        "max-enemy": 65, "max-xp": 25000,
+        "enemy-data": [{"type": "scout", "prawdopodobienstwo": 10}, {"type": "fighter", "prawdopodobienstwo": 40}, {"type": "bomber", "prawdopodobienstwo": 50}],
+        "rewards": {
+            "reward_1": {"add_weapons_2_max_speed": 5, "text": "+ {var} do max prędkości pocisków Broni 2"},
+            "reward_2": {"add_weapons_2_speed": 5, "text": "+ {var} do przyspieszenia pocisków Broni 2"}
+        }
+    },
+    "level_15": {
+        "max-enemy": 70, "max-xp": 32000,
+        "enemy-data": [{"type": "fighter", "prawdopodobienstwo": 80}, {"type": "bomber", "prawdopodobienstwo": 20}],
+        "rewards": {
+            "reward_1": {"add_thrust_power": 2.5, "text": "+ {var} do siły ciągu"},
+            "reward_2": {"reduce_linear_friction": 0.05, "text": "Znaczna redukcja tarcia (-{var})"}
+        }
+    },
+    "level_16": {
+        "max-enemy": 75, "max-xp": 40000,
+        "enemy-data": [{"type": "bomber", "prawdopodobienstwo": 100}],
+        "rewards": {
+            "reward_1": {"add_max_hp": 100, "text": "+ {var} do maksymalnego życia"},
+            "reward_2": {"add_hp_reg_speed": 5, "text": "+ {var} do regeneracji HP"}
+        }
+    }, 
+    
+    
+    
+    "level_17": {
+        "max-enemy": 80, "max-xp": 50000,
+        "enemy-data": [{"type": "fighter", "prawdopodobienstwo": 50}, {"type": "bomber", "prawdopodobienstwo": 50}],
+        "rewards": {
+            "reward_1": {"add_weapons_1_damage": 10, "text": "+ {var} do obrażeń Broni 1"},
+            "reward_2": {"reduce_weapons_1_reload": 0.15, "text": "- {var}s przeładowania Broni 1"}
+        }
+    },
+    "level_18": {
+        "max-enemy": 85, "max-xp": 65000,
+        "enemy-data": [{"type": "scout", "prawdopodobienstwo": 50}, {"type": "bomber", "prawdopodobienstwo": 50}],
+        "rewards": {
+            "reward_1": {"add_braking_force": 30, "text": "+ {var} do siły hamowania"},
+            "reward_2": {"add_max_speed": 15, "text": "+ {var} do maksymalnej prędkości"}
+        }
+    },
+    "level_19": {
+        "max-enemy": 90, "max-xp": 80000,
+        "enemy-data": [{"type": "fighter", "prawdopodobienstwo": 100}],
+        "rewards": {
+            "reward_1": {"add_weapons_2_damage": 15, "text": "+ {var} do obrażeń Broni 2"},
+            "reward_2": {"reduce_weapons_2_reload": 0.5, "text": "- {var}s przeładowania Broni 2"}
+        }
+    },
+    "level_20": {
+        "max-enemy": 100, "max-xp": 100000,
+        "enemy-data": [{"type": "scout", "prawdopodobienstwo": 33}, {"type": "fighter", "prawdopodobienstwo": 33}, {"type": "bomber", "prawdopodobienstwo": 34}],
+        "rewards": {
+            "reward_1": {"add_shield_max_timer": 5, "text": "+ {var}s czasu trwania tarczy"},
+            "reward_2": {"add_max_hp": 200, "text": "+ {var} do maksymalnego życia"}
+        }
+    },
+    "level_21": {
+        "max-enemy": 110, "max-xp": 125000,
+        "enemy-data": [{"type": "fighter", "prawdopodobienstwo": 50}, {"type": "bomber", "prawdopodobienstwo": 50}],
+        "rewards": {
+            "reward_1": {"add_weapons_1_speed": 300, "text": "+ {var} do prędkości pocisków Broni 1"},
+            "reward_2": {"add_boost_speed": 15, "text": "+ {var} do prędkości dopalacza"}
+        }
+    },
+    "level_22": {
+        "max-enemy": 120, "max-xp": 150000,
+        "enemy-data": [{"type": "bomber", "prawdopodobienstwo": 100}],
+        "rewards": {
+            "reward_1": {"add_weapons_2_steer_limit": 20, "text": "+ {var} do manewrowości pocisków"},
+            "reward_2": {"add_weapons_2_time_alive": 3, "text": "+ {var}s życia pocisków Broni 2"}
+        }
+    },
+    "level_23": {
+        "max-enemy": 130, "max-xp": 180000,
+        "enemy-data": [{"type": "fighter", "prawdopodobienstwo": 100}],
+        "rewards": {
+            "reward_1": {"add_max_shield_cooldown": 5, "text": "Ekstremalne odnawianie tarczy (+{var})"},
+            "reward_2": {"reduce_max_switch_time": 0.2, "text": "Błyskawiczna zmiana broni (-{var}s)"}
+        }
+    },
+    "level_24": {
+        "max-enemy": 140, "max-xp": 220000,
+        "enemy-data": [{"type": "scout", "prawdopodobienstwo": 10}, {"type": "fighter", "prawdopodobienstwo": 40}, {"type": "bomber", "prawdopodobienstwo": 50}],
+        "rewards": {
+            "reward_1": {"add_hp_reg_speed": 10, "text": "+ {var} do regeneracji HP"},
+            "reward_2": {"add_thrust_power": 50, "text": "+ {var} do siły ciągu"}
+        }
+    },
+    "level_25": {
+        "max-enemy": 150, "max-xp": 300000,
+        "enemy-data": [{"type": "scout", "prawdopodobienstwo": 33}, {"type": "fighter", "prawdopodobienstwo": 33}, {"type": "bomber", "prawdopodobienstwo": 34}],
+        "rewards": {
+            "reward_1": {"add_weapons_1_damage": 25, "text": "ULTRA: + {var} do obrażeń Broni 1"},
+            "reward_2": {"add_weapons_2_damage": 50, "text": "ULTRA: + {var} do obrażeń Broni 2"}
         }
     }
 }

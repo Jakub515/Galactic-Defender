@@ -36,9 +36,11 @@ class LevelManager():
             data = json.load(f)
         return data
 
-    def update(self) -> None:
+    def update(self, dt) -> None:
         if self.xp >= self.max_xp:
             self.level += 1
+            self.enemy_manager.can_start_new_level = False
             self.load_new_level(self.level)
             
-            self.ui.rewards_too_choose(self.rewards)
+            self.ui.rewards_too_choose(self.rewards, dt)
+            #self.enemy_manager.can_start_new_level = True

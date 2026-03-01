@@ -12,8 +12,8 @@ if TYPE_CHECKING:
 class Parameters:
     def __init__(self, ship_frames):
         # --- STATYSTYKI ŻYCIA ---
-        self.hp = 10_000
-        self.max_hp = 10_000
+        self.hp = 100
+        self.max_hp = 100
         self.hp_reg_speed = 1
 
         # --- FIZYKA I PRĘDKOŚĆ ---
@@ -37,14 +37,79 @@ class Parameters:
         self.weapons = []
         self.weapons_2 = []
         self._load_weapons_from_config("player_slownik.json", ship_frames) #
+        
+    def add_weapons_1_speed(self, speed: float | int) -> None:
+        for i in range(len(self.weapons)):
+            self.weapons[i][4] += speed
+            # struktura: [img, w["speed"], w["damage"], w["cooldown"], w["max-speed"], w["time-alive-all"]]
+    
+    def add_weapons_1_damage(self, damage: float | int) -> None:
+        for i in range(len(self.weapons)):
+            self.weapons[i][2] += damage
+    
+    def reduce_weapons_1_reload(self, reload: float | int) -> None:
+        for i in range(len(self.weapons)):
+            self.weapons[i][3] -= reload
+    
+    def add_weapons_2_speed(self, speed: float | int) -> None:
+        for i in range(len(self.weapons_2)):
+            self.weapons_2[i][1] += speed
+        # struktura: [img, w["speed"], w["damage"], w["cooldown"], w["max-speed"],
+        #   "time-alive_before_manewring"], w["time-alive-all"], w["steer-limit"]]
+    
+    def add_weapons_2_max_speed(self, max_speed: float | int) -> None:
+        for i in range(len(self.weapons_2)):
+            self.weapons_2[i][4] += max_speed
+    
+    def add_weapons_2_damage(self, damage: float | int) -> None:
+        for i in range(len(self.weapons_2)):
+            self.weapons_2[i][2] += damage
+    
+    def reduce_weapons_2_reload(self, reload: float | int) -> None:
+        for i in range(len(self.weapons_2)):
+            self.weapons_2[i][3] -= reload
+    
+    def add_weapons_2_time_alive(self, time_alive: float | int) -> None:
+        for i in range(len(self.weapons_2)):
+            self.weapons_2[i][6] += time_alive
+    
+    def add_weapons_2_steer_limit(self, steer_limit: float | int) -> None:
+        for i in range(len(self.weapons_2)):
+            self.weapons_2[i][7] += steer_limit
+        
+    def reduce_max_switch_time(self, max_switch_time: float | int) -> None:
+        self.max_switch_time -= max_switch_time
+        
+    def add_max_shield_cooldown(self, max_shield_cooldown: float | int) -> None:
+        self.max_shield_cooldown += max_shield_cooldown
+        
+    def add_shield_max_timer(self, shield_max_timer: float | int) -> None:
+        self.shield_max_timer += shield_max_timer
+        
+    def reduce_linear_friction(self, linear_friction: float | int) -> None:
+        self.linear_friction -= linear_friction
+        
+    def add_braking_force(self,braking_force: float | int) -> None:
+        self.braking_force += braking_force
+        
+    def add_max_boost_cooldown(self, max_boost_cooldown: float | int) -> None:
+        self.max_boost_cooldown += max_boost_cooldown
+        
+    def add_hp_reg_speed(self, hp_reg_speed: float | int) -> None:
+        self.hp_reg_speed += hp_reg_speed
 
-    def add_max_hp(self, max_hp: int) -> None:
+    def add_max_hp(self, max_hp: float | int) -> None:
         self.max_hp += max_hp
 
-    def add_max_speed(self, max_speed: int) -> None:
+    def add_max_speed(self, max_speed: float | int) -> None:
         self.max_speed += max_speed
         
-    
+    def add_boost_speed(self, boost_speed: float | int) -> None:
+        self.boost_speed += boost_speed
+        
+    def add_thrust_power(self, thrust_power: float | int) -> None:
+        self.thrust_power += thrust_power
+        
     def _load_weapons_from_config(self, filename: str, ship_frames: dict):
         """Wczytuje definicje broni z sekcji player-weapon-data pliku JSON."""
         try:
@@ -347,8 +412,8 @@ class SpaceShip():
         # self.thrust_power = self.parameters.thrust_power               
         # self.max_speed = self.parameters.max_speed               
         # self.boost_speed = self.parameters.boost_speed
-        self.linear_friction = self.parameters.linear_friction              
-        self.braking_force = self.parameters.braking_force      
+        # self.linear_friction = self.parameters.linear_friction              
+        # self.braking_force = self.parameters.braking_force      
                     
         self.speed_decay = 0.96     
         self.drift_control = 0.05
@@ -356,16 +421,32 @@ class SpaceShip():
 
         # NOWE: System przegrzewania boosta
         self.boost_cooldown = 0.0
-        self.max_boost_cooldown = self.parameters.max_boost_cooldown
+        # self.max_boost_cooldown = self.parameters.max_boost_cooldown
         self.is_boost_ready = True
 
         self.hp = self.parameters.hp  
         # self.max_hp = self.parameters.max_hp
         self.hp_timer = 0.0          # Licznik czasu
         self.hp_interval = 1.0       # Co ile sekund ma wystąpić akcja (1.0 = 1 sekunda)
-        self.hp_reg_speed = self.parameters.hp_reg_speed
+        # self.hp_reg_speed = self.parameters.hp_reg_speed
 
         self.ship_rot = self.actual_frame
+        
+    @property
+    def linear_friction(self):
+        return self.parameters.linear_friction
+        
+    @property
+    def braking_force(self):
+        return self.parameters.braking_force
+        
+    @property
+    def max_boost_cooldown(self):
+        return self.parameters.max_boost_cooldown
+        
+    @property
+    def hp_reg_speed(self):
+        return self.parameters.hp_reg_speed
 
     @property
     def max_hp(self):

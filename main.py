@@ -60,7 +60,7 @@ class Game():
         if self.paused:
             return
         # 2. Logika (Update)
-        self.level_manager.update()
+        self.level_manager.update(dt)
         self.game_controller.update(dt)
         self.player.update(dt)
         self.player_shoot.update(dt, self.enemy_manager)
@@ -106,7 +106,7 @@ class Game():
 
         # UI i Radar (na sztywno do ekranu)
         self.radar_obj.draw(window, self.player, self.enemy_manager, self.asteroid_manager, dt)
-        self.game_controller.draw(window)
+        self.game_controller.draw(window, dt)
 
 
 game_obj = Game()

@@ -20,8 +20,8 @@ class GameController:
         self.input_handler.update()
         self.ui.update(self.clock.get_fps(), dt)
 
-    def draw(self, window: pygame.Surface):
-        self.ui.draw(window)
+    def draw(self, window: pygame.Surface, dt: float):
+        self.ui.draw(window, dt)
 
 class InputHandler:
     def __init__(self, event_obj: "Event", player_obj: "SpaceShip", player_shoot: "Battle", ui_obj: "UI", collision:"Collision", enemy_manager: "EnemyManager"):
@@ -108,6 +108,9 @@ class UI:
         self.reward_2_choosed = False
         self.active_rewards = {}  # Przechowuje (funkcja, tekst) dla obu nagród
         self.show_reward_selection = False
+        
+        self.reward_shown_timer = 0
+        self.reward_shown_timer_delay = 1.0
 
     def get_hp_color(self, ratio):
         # Zabezpieczenie, aby ratio było w przedziale 0.0 - 1.0
@@ -133,8 +136,26 @@ class UI:
 
     def get_upgrade_action(self, reward_data):
         methods_map = {
-            "max_speed": self.space_ship_parameters.add_max_speed,
-            "max_hp": self.space_ship_parameters.add_max_hp
+            "add_weapons_1_speed": self.space_ship_parameters.add_weapons_1_speed,
+            "add_weapons_1_damage": self.space_ship_parameters.add_weapons_1_damage,
+            "reduce_weapons_1_reload": self.space_ship_parameters.reduce_weapons_1_reload,
+            "add_weapons_2_speed": self.space_ship_parameters.add_weapons_2_speed,
+            "add_weapons_2_max_speed": self.space_ship_parameters.add_weapons_2_max_speed,
+            "add_weapons_2_damage": self.space_ship_parameters.add_weapons_2_damage,
+            "reduce_weapons_2_reload": self.space_ship_parameters.reduce_weapons_2_reload,
+            "add_weapons_2_time_alive": self.space_ship_parameters.add_weapons_2_time_alive,
+            "add_weapons_2_steer_limit": self.space_ship_parameters.add_weapons_2_steer_limit,
+            "reduce_max_switch_time": self.space_ship_parameters.reduce_max_switch_time,
+            "add_max_shield_cooldown": self.space_ship_parameters.add_max_shield_cooldown,
+            "add_shield_max_timer": self.space_ship_parameters.add_shield_max_timer,
+            "reduce_linear_friction": self.space_ship_parameters.reduce_linear_friction,
+            "add_braking_force": self.space_ship_parameters.add_braking_force,
+            "add_max_boost_cooldown": self.space_ship_parameters.add_max_boost_cooldown,
+            "add_hp_reg_speed": self.space_ship_parameters.add_hp_reg_speed,
+            "add_max_hp": self.space_ship_parameters.add_max_hp,
+            "add_max_speed": self.space_ship_parameters.add_max_speed,
+            "add_boost_speed": self.space_ship_parameters.add_boost_speed,
+            "add_thrust_power": self.space_ship_parameters.add_thrust_power            
         }
 
         for key, value in reward_data.items():
@@ -146,7 +167,9 @@ class UI:
         
         return (lambda: None), "Błąd w pliku json 1203"
 
-    def rewards_too_choose(self, rewards):
+    def rewards_too_choose(self, rewards, dt):
+        
+        self.reward_shown_timer = 0
         """Wywoływane przez Level Managera przy awansie"""
         # Przygotowujemy dane dla obu nagród
         act1, txt1 = self.get_upgrade_action(rewards.get("reward_1", {}))
@@ -161,6 +184,10 @@ class UI:
     def _handle_reward_input(self):
         # Sprawdzamy, czy w ogóle mamy aktywne nagrody
         if not self.show_reward_selection or not self.active_rewards:
+            return
+        
+        # SPRAWDZENIE: Czy minęła sekunda?
+        if self.reward_shown_timer < self.reward_shown_timer_delay:
             return
         
         # Używamy .get(), aby VS Code przestał krzyczeć o potencjalne błędy kluczy
@@ -180,10 +207,16 @@ class UI:
     def _close_rewards(self):
         self.show_reward_selection = False
         self.active_rewards = None
+        
+        self.enemy_manager.can_start_new_level = True
 
-    def _draw_reward_boxes(self, window):
+    def _draw_reward_boxes(self, window, dt):
         """Rysuje dwa boxy na środku ekranu"""
         if not self.show_reward_selection or not self.active_rewards:
+            return
+        
+        # POPRAWKA: Sprawdzamy, czy timer skumulowany w update() przekroczył delay
+        if self.reward_shown_timer < self.reward_shown_timer_delay:
             return
 
         # Przyciemnienie tła gry
@@ -232,10 +265,11 @@ class UI:
         force = (self.target_x - self.frame_x) * self.spring_k
         self.frame_vel = (self.frame_vel + force) * self.friction
         self.frame_x += self.frame_vel
-
+        if self.show_reward_selection:
+            self.reward_shown_timer += dt
         self._handle_reward_input()
 
-    def draw(self, window):
+    def draw(self, window, dt):
         # 1. Background Overlay
         overlay = pygame.Surface((self.cxx, 115), pygame.SRCALPHA)
         pygame.draw.rect(overlay, (0, 0, 0, 140), (0, 0, self.cxx, 115))
@@ -334,7 +368,7 @@ class UI:
         ship = self.battle.player_main_class
         self._draw_skill_bar(window, start_x + total_w + 30, "Booster", 1.0 - (ship.boost_cooldown / ship.max_boost_cooldown), (255, 150, 0))
 
-        self._draw_reward_boxes(window)
+        self._draw_reward_boxes(window, dt)
 
     def _draw_targeting_module(self, window, theme_color):
         ui_x, ui_y = 25, self.cyy - 105
