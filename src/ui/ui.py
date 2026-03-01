@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from jednostki.space_ship import Battle, Parameters, SpaceShip
-    from jednostki.enemy_ship import EnemyManager
+    from src.jednostki.enemy_ship.enemy_ship import EnemyManager
     from core.event import Event
     from core.level_manager import LevelManager
     from utils.collisions import Collision

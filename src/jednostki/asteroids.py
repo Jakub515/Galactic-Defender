@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from space_ship import SpaceShip
-    from enemy_ship import EnemyManager
+    from src.jednostki.enemy_ship.enemy_ship import EnemyManager
 
 # Globalny słownik na podręczną pamięć obróconych obrazków
 ROTATION_CACHE = {}

@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from jednostki.asteroids import AsteroidManager
     from jednostki.space_ship import SpaceShip
-    from jednostki.enemy_ship import EnemyManager
+    from src.jednostki.enemy_ship.enemy_ship import EnemyManager
 
 class Radar:
     def __init__(self, screen_width: int, screen_height: int, radar_size:int=200, world_radius:int=10000, zoom_radius:int=4000):

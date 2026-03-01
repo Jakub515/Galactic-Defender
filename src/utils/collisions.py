@@ -7,7 +7,7 @@ if TYPE_CHECKING:
     from jednostki.shoot import Shoot
     from jednostki.asteroids import AsteroidManager
     from jednostki.space_ship import SpaceShip, Battle
-    from jednostki.enemy_ship import EnemyManager
+    from src.jednostki.enemy_ship.enemy_ship import EnemyManager
 
 class Collision():
     def __init__(self, mixer_obj: "MusicManager", cxx: int, cyy: int, enemy_manager: "EnemyManager"):
