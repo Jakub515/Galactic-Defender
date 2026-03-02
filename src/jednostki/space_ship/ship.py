@@ -45,7 +45,9 @@ class SpaceShip():
         self.rotation_dir = 0 
 
         # --- FIZYKA I BOOST COOLDOWN ---
-        self.player_pos = pygame.math.Vector2(player_pos[0], player_pos[1])
+        self.player_x_start_pos = player_pos[0]
+        self.player_y_start_pos = player_pos[1]
+        self.player_pos = pygame.math.Vector2(self.player_x_start_pos, self.player_y_start_pos)
         self.velocity = pygame.math.Vector2(0, 0)  
         self.angle = 90                                     
         self.angular_velocity = 0                   
@@ -75,6 +77,32 @@ class SpaceShip():
         # self.hp_reg_speed = self.parameters.hp_reg_speed
 
         self.ship_rot = self.actual_frame
+        
+    def reinit_pos(self):
+        # 1. Reset pozycji
+        self.player_pos = pygame.math.Vector2(self.player_x_start_pos, self.player_y_start_pos)
+        
+        # 2. KLUCZOWE: Reset prędkości liniowej do zera
+        self.velocity = pygame.math.Vector2(0, 0)
+        
+        # 3. Reset rotacji i prędkości obrotowej
+        self.angle = 90
+        self.angular_velocity = 0
+        self.rotation_dir = 0
+        
+        # 4. Reset kierunku patrzenia
+        rad = math.radians(-self.angle)
+        self.forward_dir = pygame.math.Vector2(math.cos(rad), math.sin(rad))
+        
+        # 5. Czyszczenie efektów wizualnych, żeby nie "zostały" w starym miejscu
+        self.trail_points = []
+        self.last_trail_pos = self.player_pos.copy()
+        
+        # 6. Reset statusów
+        self.is_thrusting = False
+        self.is_braking = False
+        self.is_boosting = False
+        self.is_destroyed = False # Jeśli chcesz też ożywić statek
         
     @property
     def linear_friction(self):

@@ -1,6 +1,12 @@
 {
     "level_1": {
         "max-enemy": 5, "max-xp": 50,
+        "world_config": {
+            "word_radius": 3000,
+            "asteroid_data": [
+                {"center_x": 0, "center_y": 0, "radius": 2500, "count": 40}
+            ]
+        },
         "enemy-data": [{"type": "scout", "prawdopodobienstwo": 70}, {"type": "fighter", "prawdopodobienstwo": 25}, {"type": "bomber", "prawdopodobienstwo": 5}],
         "rewards": {
             "reward_1": {"max_speed": 1, "text": "+ {var} do maksymalnej prędkości"},
@@ -9,6 +15,12 @@
     },
     "level_2": {
         "max-enemy": 8, "max-xp": 120,
+        "world_config": {
+            "word_radius": 3500,
+            "asteroid_data": [
+                {"center_x": 0, "center_y": 0, "radius": 3200, "count": 60}
+            ]
+        },
         "enemy-data": [{"type": "scout", "prawdopodobienstwo": 50}, {"type": "fighter", "prawdopodobienstwo": 40}, {"type": "bomber", "prawdopodobienstwo": 10}],
         "rewards": {
             "reward_1": {"add_weapons_1_damage": 2, "text": "+ {var} do obrażeń Broni 1"},
@@ -17,6 +29,12 @@
     },
     "level_3": {
         "max-enemy": 12, "max-xp": 250,
+        "world_config": {
+            "word_radius": 4500,
+            "asteroid_data": [
+                {"center_x": 0, "center_y": 0, "radius": 4000, "count": 80}
+            ]
+        },
         "enemy-data": [{"type": "scout", "prawdopodobienstwo": 30}, {"type": "fighter", "prawdopodobienstwo": 50}, {"type": "bomber", "prawdopodobienstwo": 20}],
         "rewards": {
             "reward_1": {"add_thrust_power": 0.1, "text": "+ {var} do siły ciągu"},
@@ -25,6 +43,13 @@
     },
     "level_4": {
         "max-enemy": 18, "max-xp": 500,
+        "world_config": {
+            "word_radius": 5000,
+            "asteroid_data": [
+                {"center_x": 0, "center_y": 0, "radius": 4800, "count": 100},
+                {"center_x": 1000, "center_y": 1000, "radius": 500, "count": 15}
+            ]
+        },
         "enemy-data": [{"type": "scout", "prawdopodobienstwo": 15}, {"type": "fighter", "prawdopodobienstwo": 60}, {"type": "bomber", "prawdopodobienstwo": 25}],
         "rewards": {
             "reward_1": {"add_shield_max_timer": 2, "text": "+ {var}s czasu trwania tarczy"},
@@ -33,6 +58,13 @@
     },
     "level_5": {
         "max-enemy": 25, "max-xp": 1000,
+        "world_config": {
+            "word_radius": 6000,
+            "asteroid_data": [
+                {"center_x": 0, "center_y": 0, "radius": 5500, "count": 120},
+                {"center_x": -1500, "center_y": -1500, "radius": 800, "count": 25}
+            ]
+        },
         "enemy-data": [{"type": "scout", "prawdopodobienstwo": 5}, {"type": "fighter", "prawdopodobienstwo": 50}, {"type": "bomber", "prawdopodobienstwo": 45}],
         "rewards": {
             "reward_1": {"add_weapons_2_damage": 5, "text": "+ {var} do obrażeń Broni 2 (Pociski)"},
@@ -41,6 +73,13 @@
     },
     "level_6": {
         "max-enemy": 28, "max-xp": 1600,
+        "world_config": {
+            "word_radius": 7000,
+            "asteroid_data": [
+                {"center_x": 0, "center_y": 0, "radius": 6500, "count": 150},
+                {"center_x": 2000, "center_y": -2000, "radius": 1200, "count": 30}
+            ]
+        },
         "enemy-data": [{"type": "scout", "prawdopodobienstwo": 5}, {"type": "fighter", "prawdopodobienstwo": 40}, {"type": "bomber", "prawdopodobienstwo": 55}],
         "rewards": {
             "reward_1": {"add_max_hp": 20, "text": "+ {var} do maksymalnego życia"},
@@ -49,6 +88,13 @@
     },
     "level_7": {
         "max-enemy": 32, "max-xp": 2400,
+        "world_config": {
+            "word_radius": 8000,
+            "asteroid_data": [
+                {"center_x": 0, "center_y": 0, "radius": 7500, "count": 180},
+                {"center_x": 3000, "center_y": 3000, "radius": 1500, "count": 40}
+            ]
+        },
         "enemy-data": [{"type": "fighter", "prawdopodobienstwo": 60}, {"type": "bomber", "prawdopodobienstwo": 40}],
         "rewards": {
             "reward_1": {"add_weapons_1_speed": 5, "text": "+ {var} do prędkości pocisków Broni 1"},
@@ -57,6 +103,13 @@
     },
     "level_8": {
         "max-enemy": 35, "max-xp": 3500,
+        "world_config": {
+            "word_radius": 9000,
+            "asteroid_data": [
+                {"center_x": 0, "center_y": 0, "radius": 8500, "count": 200},
+                {"center_x": -3000, "center_y": 3000, "radius": 2000, "count": 50}
+            ]
+        },
         "enemy-data": [{"type": "fighter", "prawdopodobienstwo": 40}, {"type": "bomber", "prawdopodobienstwo": 60}],
         "rewards": {
             "reward_1": {"reduce_max_switch_time": 1.0, "text": "Szybsza zmiana broni o {var}s"},
@@ -65,6 +118,13 @@
     },
     "level_9": {
         "max-enemy": 40, "max-xp": 5000,
+        "world_config": {
+            "word_radius": 10000,
+            "asteroid_data": [
+                {"center_x": 0, "center_y": 0, "radius": 9500, "count": 220},
+                {"center_x": 4000, "center_y": 0, "radius": 2500, "count": 60}
+            ]
+        },
         "enemy-data": [{"type": "fighter", "prawdopodobienstwo": 20}, {"type": "bomber", "prawdopodobienstwo": 80}],
         "rewards": {
             "reward_1": {"add_weapons_2_time_alive": 1.5, "text": "+ {var}s życia pocisków Broni 2"},
@@ -73,6 +133,13 @@
     },
     "level_10": {
         "max-enemy": 45, "max-xp": 7000,
+        "world_config": {
+            "word_radius": 12000,
+            "asteroid_data": [
+                {"center_x": 0, "center_y": 0, "radius": 11000, "count": 300},
+                {"center_x": 0, "center_y": 5000, "radius": 3000, "count": 80}
+            ]
+        },
         "enemy-data": [{"type": "bomber", "prawdopodobienstwo": 100}],
         "rewards": {
             "reward_1": {"add_max_hp": 50, "text": "+ {var} do maksymalnego życia"},
@@ -81,6 +148,13 @@
     },
     "level_11": {
         "max-enemy": 50, "max-xp": 10000,
+        "world_config": {
+            "word_radius": 13000,
+            "asteroid_data": [
+                {"center_x": 0, "center_y": 0, "radius": 12500, "count": 350},
+                {"center_x": -5000, "center_y": -5000, "radius": 4000, "count": 100}
+            ]
+        },
         "enemy-data": [{"type": "scout", "prawdopodobienstwo": 20}, {"type": "fighter", "prawdopodobienstwo": 40}, {"type": "bomber", "prawdopodobienstwo": 40}],
         "rewards": {
             "reward_1": {"add_max_boost_cooldown": 2, "text": "Szybsze odnawianie dopalacza (+{var})"},
@@ -89,6 +163,13 @@
     },
     "level_12": {
         "max-enemy": 55, "max-xp": 14000,
+        "world_config": {
+            "word_radius": 14000,
+            "asteroid_data": [
+                {"center_x": 0, "center_y": 0, "radius": 13500, "count": 400},
+                {"center_x": 6000, "center_y": 2000, "radius": 3500, "count": 90}
+            ]
+        },
         "enemy-data": [{"type": "fighter", "prawdopodobienstwo": 50}, {"type": "bomber", "prawdopodobienstwo": 50}],
         "rewards": {
             "reward_1": {"add_weapons_1_damage": 5, "text": "+ {var} do obrażeń Broni 1"},
@@ -97,6 +178,13 @@
     },
     "level_13": {
         "max-enemy": 60, "max-xp": 19000,
+        "world_config": {
+            "word_radius": 15000,
+            "asteroid_data": [
+                {"center_x": 0, "center_y": 0, "radius": 14500, "count": 450},
+                {"center_x": -7000, "center_y": 3000, "radius": 4000, "count": 110}
+            ]
+        },
         "enemy-data": [{"type": "bomber", "prawdopodobienstwo": 100}],
         "rewards": {
             "reward_1": {"add_shield_max_timer": 3, "text": "+ {var}s czasu trwania tarczy"},
@@ -105,6 +193,13 @@
     },
     "level_14": {
         "max-enemy": 65, "max-xp": 25000,
+        "world_config": {
+            "word_radius": 16000,
+            "asteroid_data": [
+                {"center_x": 0, "center_y": 0, "radius": 15500, "count": 500},
+                {"center_x": 4000, "center_y": -6000, "radius": 3000, "count": 80}
+            ]
+        },
         "enemy-data": [{"type": "scout", "prawdopodobienstwo": 10}, {"type": "fighter", "prawdopodobienstwo": 40}, {"type": "bomber", "prawdopodobienstwo": 50}],
         "rewards": {
             "reward_1": {"add_weapons_2_max_speed": 5, "text": "+ {var} do max prędkości pocisków Broni 2"},
@@ -113,6 +208,13 @@
     },
     "level_15": {
         "max-enemy": 70, "max-xp": 32000,
+        "world_config": {
+            "word_radius": 18000,
+            "asteroid_data": [
+                {"center_x": 0, "center_y": 0, "radius": 17000, "count": 600},
+                {"center_x": 8000, "center_y": 8000, "radius": 5000, "count": 150}
+            ]
+        },
         "enemy-data": [{"type": "fighter", "prawdopodobienstwo": 80}, {"type": "bomber", "prawdopodobienstwo": 20}],
         "rewards": {
             "reward_1": {"add_thrust_power": 2.5, "text": "+ {var} do siły ciągu"},
@@ -121,17 +223,27 @@
     },
     "level_16": {
         "max-enemy": 75, "max-xp": 40000,
+        "world_config": {
+            "word_radius": 20000,
+            "asteroid_data": [
+                {"center_x": 0, "center_y": 0, "radius": 19000, "count": 700},
+                {"center_x": -10000, "center_y": 0, "radius": 6000, "count": 200}
+            ]
+        },
         "enemy-data": [{"type": "bomber", "prawdopodobienstwo": 100}],
         "rewards": {
             "reward_1": {"add_max_hp": 100, "text": "+ {var} do maksymalnego życia"},
             "reward_2": {"add_hp_reg_speed": 5, "text": "+ {var} do regeneracji HP"}
         }
-    }, 
-    
-    
-    
+    },
     "level_17": {
         "max-enemy": 80, "max-xp": 50000,
+        "world_config": {
+            "word_radius": 22000,
+            "asteroid_data": [
+                {"center_x": 0, "center_y": 0, "radius": 21000, "count": 800}
+            ]
+        },
         "enemy-data": [{"type": "fighter", "prawdopodobienstwo": 50}, {"type": "bomber", "prawdopodobienstwo": 50}],
         "rewards": {
             "reward_1": {"add_weapons_1_damage": 10, "text": "+ {var} do obrażeń Broni 1"},
@@ -140,6 +252,13 @@
     },
     "level_18": {
         "max-enemy": 85, "max-xp": 65000,
+        "world_config": {
+            "word_radius": 24000,
+            "asteroid_data": [
+                {"center_x": 0, "center_y": 0, "radius": 23000, "count": 900},
+                {"center_x": 12000, "center_y": -12000, "radius": 8000, "count": 250}
+            ]
+        },
         "enemy-data": [{"type": "scout", "prawdopodobienstwo": 50}, {"type": "bomber", "prawdopodobienstwo": 50}],
         "rewards": {
             "reward_1": {"add_braking_force": 30, "text": "+ {var} do siły hamowania"},
@@ -148,6 +267,12 @@
     },
     "level_19": {
         "max-enemy": 90, "max-xp": 80000,
+        "world_config": {
+            "word_radius": 26000,
+            "asteroid_data": [
+                {"center_x": 0, "center_y": 0, "radius": 25000, "count": 1000}
+            ]
+        },
         "enemy-data": [{"type": "fighter", "prawdopodobienstwo": 100}],
         "rewards": {
             "reward_1": {"add_weapons_2_damage": 15, "text": "+ {var} do obrażeń Broni 2"},
@@ -156,6 +281,13 @@
     },
     "level_20": {
         "max-enemy": 100, "max-xp": 100000,
+        "world_config": {
+            "word_radius": 30000,
+            "asteroid_data": [
+                {"center_x": 0, "center_y": 0, "radius": 28000, "count": 1200},
+                {"center_x": 0, "center_y": 0, "radius": 15000, "count": 300}
+            ]
+        },
         "enemy-data": [{"type": "scout", "prawdopodobienstwo": 33}, {"type": "fighter", "prawdopodobienstwo": 33}, {"type": "bomber", "prawdopodobienstwo": 34}],
         "rewards": {
             "reward_1": {"add_shield_max_timer": 5, "text": "+ {var}s czasu trwania tarczy"},
@@ -164,6 +296,12 @@
     },
     "level_21": {
         "max-enemy": 110, "max-xp": 125000,
+        "world_config": {
+            "word_radius": 32000,
+            "asteroid_data": [
+                {"center_x": 0, "center_y": 0, "radius": 31000, "count": 1400}
+            ]
+        },
         "enemy-data": [{"type": "fighter", "prawdopodobienstwo": 50}, {"type": "bomber", "prawdopodobienstwo": 50}],
         "rewards": {
             "reward_1": {"add_weapons_1_speed": 300, "text": "+ {var} do prędkości pocisków Broni 1"},
@@ -172,6 +310,12 @@
     },
     "level_22": {
         "max-enemy": 120, "max-xp": 150000,
+        "world_config": {
+            "word_radius": 35000,
+            "asteroid_data": [
+                {"center_x": 0, "center_y": 0, "radius": 34000, "count": 1600}
+            ]
+        },
         "enemy-data": [{"type": "bomber", "prawdopodobienstwo": 100}],
         "rewards": {
             "reward_1": {"add_weapons_2_steer_limit": 20, "text": "+ {var} do manewrowości pocisków"},
@@ -180,6 +324,12 @@
     },
     "level_23": {
         "max-enemy": 130, "max-xp": 180000,
+        "world_config": {
+            "word_radius": 40000,
+            "asteroid_data": [
+                {"center_x": 0, "center_y": 0, "radius": 38000, "count": 2000}
+            ]
+        },
         "enemy-data": [{"type": "fighter", "prawdopodobienstwo": 100}],
         "rewards": {
             "reward_1": {"add_max_shield_cooldown": 5, "text": "Ekstremalne odnawianie tarczy (+{var})"},
@@ -188,6 +338,12 @@
     },
     "level_24": {
         "max-enemy": 140, "max-xp": 220000,
+        "world_config": {
+            "word_radius": 45000,
+            "asteroid_data": [
+                {"center_x": 0, "center_y": 0, "radius": 42000, "count": 2500}
+            ]
+        },
         "enemy-data": [{"type": "scout", "prawdopodobienstwo": 10}, {"type": "fighter", "prawdopodobienstwo": 40}, {"type": "bomber", "prawdopodobienstwo": 50}],
         "rewards": {
             "reward_1": {"add_hp_reg_speed": 10, "text": "+ {var} do regeneracji HP"},
@@ -196,6 +352,12 @@
     },
     "level_25": {
         "max-enemy": 150, "max-xp": 300000,
+        "world_config": {
+            "word_radius": 50000,
+            "asteroid_data": [
+                {"center_x": 0, "center_y": 0, "radius": 48000, "count": 3000}
+            ]
+        },
         "enemy-data": [{"type": "scout", "prawdopodobienstwo": 33}, {"type": "fighter", "prawdopodobienstwo": 33}, {"type": "bomber", "prawdopodobienstwo": 34}],
         "rewards": {
             "reward_1": {"add_weapons_1_damage": 25, "text": "ULTRA: + {var} do obrażeń Broni 1"},

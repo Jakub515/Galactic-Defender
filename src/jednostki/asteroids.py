@@ -1,31 +1,29 @@
 import pygame
 import math
 import random
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from space_ship import SpaceShip
     from jednostki.enemy_ship.enemy_manager import EnemyManager
 
 # Globalny słownik na podręczną pamięć obróconych obrazków
-ROTATION_CACHE = {}
+ROTATION_CACHE: dict[int, dict[float, pygame.Surface]] = {}
 
-def get_rotated_asteroid(original_image: pygame.Surface, angle: float):
-    """Pobiera gotowy obrazek z cache. Precyzja 1 stopień (wystarczy dla RAM)."""
-    angle = round(angle) % 360
+def get_rotated_asteroid(original_image: pygame.Surface, angle: float) -> pygame.Surface:
+    angle_idx = float(round(angle) % 360)
     img_id = id(original_image)
-    
-    try:
-        return ROTATION_CACHE[img_id][angle]
-    except KeyError:
-        if img_id not in ROTATION_CACHE:
-            ROTATION_CACHE[img_id] = {}
-        rotated = pygame.transform.rotate(original_image, angle).convert_alpha()
-        ROTATION_CACHE[img_id][angle] = rotated
-        return rotated
+    if img_id not in ROTATION_CACHE:
+        ROTATION_CACHE[img_id] = {}
+    if angle_idx not in ROTATION_CACHE[img_id]:
+        rotated = pygame.transform.rotate(original_image, angle_idx).convert_alpha()
+        ROTATION_CACHE[img_id][angle_idx] = rotated
+    return ROTATION_CACHE[img_id][angle_idx]
 
 class Asteroid:
-    def __init__(self, planet_images: list, meteor_images: list, center_pos: pygame.math.Vector2, spawn_radius: int, fixed_angle: float):
+    def __init__(self, planet_images: list, meteor_images: list, center_pos: pygame.math.Vector2, 
+                 spawn_radius: int, fixed_angle: float, world_radius: float):
+        # Losowanie obrazka
         if planet_images and random.random() < 0.1:
             self.original_image = random.choice(planet_images)
         else:
@@ -34,11 +32,18 @@ class Asteroid:
         self.radius = self.original_image.get_width() / 2
         self.mass = self.radius * 0.1
         
-        # Geometria koła
+        # Geometria rozstawienia
         jitter_angle = random.uniform(-0.12, 0.12) 
         angle = fixed_angle + jitter_angle
-        distance = random.gauss(mu=spawn_radius, sigma=spawn_radius * 0.03)
         
+        # --- ZABEZPIECZENIE GRANICY ---
+        # Losujemy dystans, ale upewniamy się, że nie wyjdzie poza world_radius
+        # Odejmujemy self.radius, aby asteroida nie dotykała krawędzi środkiem
+        max_allowed_dist = world_radius - self.radius
+        distance = random.gauss(mu=spawn_radius, sigma=spawn_radius * 0.03)
+        distance = min(distance, max_allowed_dist)
+        
+        # Obliczamy pozycję względem środka świata (0,0), jeśli center_pos to środek
         self.pos = pygame.math.Vector2(
             center_pos.x + math.cos(angle) * distance,
             center_pos.y + math.sin(angle) * distance
@@ -52,21 +57,23 @@ class Asteroid:
         self.gravity_range_sq = self.gravity_range ** 2
         self.is_visible = False
 
-        self.rect = pygame.Rect(0, 0, self.radius * 2, self.radius * 2)
+        self.rect = pygame.Rect(0, 0, int(self.radius * 2), int(self.radius * 2))
         self.rect.center = (int(self.pos.x), int(self.pos.y))
 
     def update(self, dt: float, player: "SpaceShip", enemies: list):
         self.pos += self.velocity
         self.rect.center = (int(self.pos.x), int(self.pos.y))
         self.angle = (self.angle + self.rotation_speed) % 360
+        
         if self.is_visible:
             self._apply_gravity(player, dt)
             for enemy in enemies:
-                if not enemy.is_dead:
+                if not getattr(enemy, 'is_dead', False):
                     self._apply_gravity(enemy, dt)
 
-    def _apply_gravity(self, target, dt: float):
-        target_pos = target.player_pos if hasattr(target, 'player_pos') else target.pos
+    def _apply_gravity(self, target: Any, dt: float):
+        target_pos = getattr(target, 'player_pos', getattr(target, 'pos', None))
+        if target_pos is None: return
         rel_x = self.pos.x - target_pos.x
         rel_y = self.pos.y - target_pos.y
         dist_sq = rel_x**2 + rel_y**2
@@ -76,68 +83,66 @@ class Asteroid:
             gravity_vector = pygame.math.Vector2(rel_x, rel_y) / distance * force_magnitude * dt * 50
             target.velocity += gravity_vector
 
-    def draw(self, window: pygame.Surface, cam_x: float, cam_y: float, screen_w: int, screen_h: int):
-        # Tutaj rysujemy używając już obliczonego wcześniej self.is_visible
+    def draw(self, window: pygame.Surface, cam_x: float, cam_y: float):
         draw_x = self.pos.x - cam_x
         draw_y = self.pos.y - cam_y
-        
         rotated = get_rotated_asteroid(self.original_image, self.angle)
-        # Pobieramy rect tylko do blitowania (lokalny dla ekranu)
         rect = rotated.get_rect(center=(int(draw_x), int(draw_y)))
         window.blit(rotated, rect.topleft)
 
 class AsteroidManager:
-    def __init__(self, ship_frames: dict, zones_list: list):
-        self.planet_images = []
-        self.meteor_images = []
+    def __init__(self, ship_frames: dict, zones_list: list, world_radius: float):
+        self.planet_images: list[pygame.Surface] = []
+        self.meteor_images: list[pygame.Surface] = []
+        self.asteroids: list[Asteroid] = []
+        self.world_radius = world_radius # Zapamiętujemy promień świata
         
-        # 1. Agresywne filtrowanie i skalowanie (KLUCZ DO RAM)
         for path, image in ship_frames.items():
             if path.startswith("images/Meteors/"):
                 img = image.convert_alpha()
                 if "planet" in path.lower():
-                    # Planety skalujemy do max 150px
                     scale = 150 / max(img.get_width(), img.get_height())
                     new_size = (int(img.get_width() * scale), int(img.get_height() * scale))
                     img = pygame.transform.smoothscale(img, new_size)
                     self.planet_images.append(img)
                 else:
-                    # Meteoryty skalujemy do max 60px
                     scale = 60 / max(img.get_width(), img.get_height())
                     new_size = (int(img.get_width() * scale), int(img.get_height() * scale))
                     img = pygame.transform.smoothscale(img, new_size)
                     self.meteor_images.append(img)
 
-        # 2. Generowanie cache (z precyzją 1 stopień)
         self._precompute_all_rotations()
+        self.reinit_asteroid_data(zones_list, self.world_radius)
 
-        # 3. Tworzenie obiektów
-        self.asteroids = []
+    def _precompute_all_rotations(self):
+        all_unique_images = list(set(self.planet_images + self.meteor_images))
+        for img in all_unique_images:
+            for angle in range(360):
+                get_rotated_asteroid(img, float(angle))
+
+    def reinit_asteroid_data(self, zones_list: list, world_radius: float):
+        """Resetuje asteroidy, pilnując by nie przekroczyły world_radius."""
+        self.asteroids.clear()
+        self.world_radius = world_radius
+
         for zone in zones_list:
             count = zone["count"]
+            center_pos = zone["pos"]
+            spawn_radius = zone["radius"]
             angle_step = (2 * math.pi) / count
+            
             for i in range(count):
                 target_angle = i * angle_step
                 self.asteroids.append(Asteroid(
                     self.planet_images, self.meteor_images, 
-                    zone["pos"], zone["radius"], target_angle
+                    center_pos, spawn_radius, target_angle,
+                    self.world_radius # Przekazujemy promień do każdej asteroidy
                 ))
         
-        for _ in range(10): # Mniej iteracji dla szybkości startu
+        for _ in range(15):
             self.resolve_overlaps(only_visible=False)
 
-    def _precompute_all_rotations(self):
-        """Zoptymalizowane generowanie cache'u (360 klatek na obrazek)."""
-        all_unique_images = list(set(self.planet_images + self.meteor_images))
-        
-        for img in all_unique_images:
-            img_id = id(img)
-            ROTATION_CACHE[img_id] = {}
-            for angle in range(360):
-                # Rotacja i convert_alpha() dla optymalizacji RAM
-                ROTATION_CACHE[img_id][float(angle)] = pygame.transform.rotate(img, angle).convert_alpha()
-
-    def resolve_overlaps(self, only_visible=True):
+    def resolve_overlaps(self, only_visible: bool = True):
         active = [a for a in self.asteroids if a.is_visible] if only_visible else self.asteroids
         for i in range(len(active)):
             for j in range(i + 1, len(active)):
@@ -159,10 +164,9 @@ class AsteroidManager:
 
     def draw(self, window: pygame.Surface, cam_x: float, cam_y: float, screen_w: int, screen_h: int):
         view_rect = pygame.Rect(cam_x - 150, cam_y - 150, screen_w + 300, screen_h + 300)
-        
         for asteroid in self.asteroids:
             if view_rect.colliderect(asteroid.rect):
                 asteroid.is_visible = True
-                asteroid.draw(window, cam_x, cam_y, screen_w, screen_h)
+                asteroid.draw(window, cam_x, cam_y)
             else:
                 asteroid.is_visible = False

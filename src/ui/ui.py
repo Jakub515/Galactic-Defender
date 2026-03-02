@@ -1,6 +1,6 @@
 import pygame
 import math
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from jednostki.space_ship import Battle, Parameters, SpaceShip
@@ -33,14 +33,30 @@ class InputHandler:
         self.enemy_manager = enemy_manager
     
     def update(self):
-        self.player_obj.thrust(self.event_obj.key_up, boost=self.event_obj.backquote)
-        if self.event_obj.key_left: self.player_obj.rotate(1)
-        elif self.event_obj.key_right: self.player_obj.rotate(-1)
-        else: self.player_obj.rotate(0)
-        self.player_obj.brake(self.event_obj.key_down)
+        self.ui_obj.reward_1_choosed = self.event_obj.key_o
+        self.ui_obj.reward_2_choosed = self.event_obj.key_p
 
-        self.player_shoot.fire(self.event_obj.key_space)
-        if self.event_obj.key_s: self.player_shoot.activate_shield()
+        if self.event_obj.key_r:
+            self.ui_obj.last_celowanie_mode = 1
+        elif self.event_obj.key_t:
+            self.ui_obj.last_celowanie_mode = 2
+            
+        if self.ui_obj.player_can_manevre:
+            self.player_obj.thrust(self.event_obj.key_up, boost=self.event_obj.backquote)
+            if self.event_obj.key_left: self.player_obj.rotate(1)
+            elif self.event_obj.key_right: self.player_obj.rotate(-1)
+            else: self.player_obj.rotate(0)
+            self.player_obj.brake(self.event_obj.key_down)
+
+            self.player_shoot.fire(self.event_obj.key_space)
+            if self.event_obj.key_s: self.player_shoot.activate_shield()
+            
+        else:
+            self.player_obj.thrust(False, boost=False)
+            self.player_obj.brake(True)
+
+            self.player_shoot.fire(self.event_obj.key_space)
+            if self.event_obj.key_s: self.player_shoot.activate_shield()
 
         if self.event_obj.key_ctrl_left and not self.ctrl_pressed_last_frame:
             self.player_shoot.switch_weapon_set()
@@ -53,14 +69,7 @@ class InputHandler:
             if pressed:
                 self.player_shoot.select_weapon(i)
                 break
-
-        if self.event_obj.key_r:
-            self.ui_obj.last_celowanie_mode = 1
-        elif self.event_obj.key_t:
-            self.ui_obj.last_celowanie_mode = 2
         
-        self.ui_obj.reward_1_choosed = self.event_obj.key_o
-        self.ui_obj.reward_2_choosed = self.event_obj.key_p
 
 class UI:
     def __init__(self, event_obj: "Event", screen_width: int, screen_height: int, images: dict, battle: "Battle", space_ship: "SpaceShip", level_manager: "LevelManager", enemy_manager: "EnemyManager", param: "Parameters"):
@@ -105,11 +114,21 @@ class UI:
 
         self.reward_1_choosed = False
         self.reward_2_choosed = False
-        self.active_rewards = {}  # Przechowuje (funkcja, tekst) dla obu nagród
+        self.active_rewards: dict[str, dict[str, Any]] = {}  # Przechowuje (funkcja, tekst) dla obu nagród
         self.show_reward_selection = False
         
         self.reward_shown_timer = 0
         self.reward_shown_timer_delay = 1.0
+        
+        # Animacje nagród
+        self.reward_alpha = 0  # Aktualna przezroczystość
+        self.is_closing_rewards = False
+        
+        # Logika XP
+        self.prev_max_xp = 0 # XP wymagane na poprzedni poziom
+        self.displayed_xp = self.level_manager.xp
+        
+        self.player_can_manevre = True
 
     def get_hp_color(self, ratio):
         # Zabezpieczenie, aby ratio było w przedziale 0.0 - 1.0
@@ -167,6 +186,15 @@ class UI:
         return (lambda: None), "Błąd w pliku json 1203"
 
     def rewards_too_choose(self, rewards, dt):
+        self.player_can_manevre = False
+            
+        # Jeśli level_manager.max_xp to np. 200, a przed chwilą był to 100,
+        # to 100 staje się naszym nowym "zerem" dla paska.
+        # Zakładając, że level_manager zwiększa max_xp o stałą wartość (np. 100):
+        self.prev_max_xp =  self.level_manager.xp
+        
+        self.reward_shown_timer = 0
+        self.is_closing_rewards = False
         
         self.reward_shown_timer = 0
         """Wywoływane przez Level Managera przy awansie"""
@@ -179,6 +207,8 @@ class UI:
             "2": {"action": act2, "text": txt2}
         }
         self.show_reward_selection = True
+        
+        
 
     def _handle_reward_input(self):
         # Sprawdzamy, czy w ogóle mamy aktywne nagrody
@@ -204,52 +234,82 @@ class UI:
             self._close_rewards()
 
     def _close_rewards(self):
-        self.show_reward_selection = False
-        self.active_rewards = None
-        
-        self.enemy_manager.can_start_new_level = True
+
+        # Zamiast czyścić wszystko, odpalamy animację zanikania
+        self.is_closing_rewards = True
 
     def _draw_reward_boxes(self, window):
-        """Rysuje dwa boxy na środku ekranu"""
-        if not self.show_reward_selection or not self.active_rewards:
-            return
-        
-        # POPRAWKA: Sprawdzamy, czy timer skumulowany w update() przekroczył delay
-        if self.reward_shown_timer < self.reward_shown_timer_delay:
+        if self.reward_alpha <= 0:
             return
 
-        # Przyciemnienie tła gry
+        # Przyciemnienie tła (dynamiczne alpha)
         overlay = pygame.Surface((self.cxx, self.cyy), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, 180))
+        overlay.fill((0, 0, 0, int(self.reward_alpha * 0.7))) # Max ~180
         window.blit(overlay, (0, 0))
 
-        # Konfiguracja boxów
         box_w, box_h = 400, 150
         gap = 75
         start_x = (self.cxx - (2 * box_w + gap)) // 2
         y = (self.cyy - box_h) // 2
 
-        keys_to_choose = ("O","P")
+        keys_to_choose = ("O", "P")
         for i, key in enumerate(["1", "2"]):
             rect = pygame.Rect(start_x + i * (box_w + gap), y, box_w, box_h)
             
-            # Rysowanie boxa
-            pygame.draw.rect(window, (20, 30, 50), rect, border_radius=15)
-            pygame.draw.rect(window, (0, 150, 255), rect, 3, border_radius=15)
+            # Główny box z alpha
+            s = pygame.Surface((box_w, box_h), pygame.SRCALPHA)
+            pygame.draw.rect(s, (20, 30, 50, self.reward_alpha), (0, 0, box_w, box_h), border_radius=15)
+            pygame.draw.rect(s, (0, 150, 255, self.reward_alpha), (0, 0, box_w, box_h), 3, border_radius=15)
+            window.blit(s, rect)
 
-            # Tekst nagrody
+            # Teksty z alpha
             reward_txt = self.active_rewards[key]["text"]
             txt_surf = self.font_big.render(reward_txt, True, (255, 255, 255))
-            txt_rect = txt_surf.get_rect(center=(rect.centerx, rect.centery - 20))
-            window.blit(txt_surf, txt_rect)
+            txt_surf.set_alpha(self.reward_alpha)
+            window.blit(txt_surf, txt_surf.get_rect(center=(rect.centerx, rect.centery - 20)))
 
-            # Instrukcja klawisza
-            key_surf = self.font.render(f"Naciśnij [{keys_to_choose[int(key)-1]}] aby wybrać", True, (0, 200, 255))
-            key_rect = key_surf.get_rect(center=(rect.centerx, rect.centery + 30))
-            window.blit(key_surf, key_rect)
+            key_surf = self.font.render(f"Naciśnij [{keys_to_choose[i]}] aby wybrać", True, (0, 200, 255))
+            key_surf.set_alpha(self.reward_alpha)
+            window.blit(key_surf, key_rect := key_surf.get_rect(center=(rect.centerx, rect.centery + 30)))
+
+    def _actually_close_rewards(self):
+        # To wywoła się, gdy alpha spadnie do 0
+        self.show_reward_selection = False
+        self.is_closing_rewards = False
+        self.active_rewards = {}
+        self.enemy_manager.can_start_new_level = True
+        
+        self.player_can_manevre = True
 
 
     def update(self, current_fps, dt):
+        self.fps = current_fps
+        self.pulse_time += dt
+        
+        # --- LOGIKA PASKA XP (OD ZERA NA KAŻDYM LEVELU) ---
+        # Zakładamy, że level_manager ma informację o progu poprzedniego poziomu
+        # Jeśli nie, możemy to emulować:
+        current_xp_in_level = self.level_manager.xp - self.prev_max_xp
+        max_xp_in_level = self.level_manager.max_xp - self.prev_max_xp
+        
+        # Płynne dążenie wyświetlanego XP do celu (interpolacja)
+        target_xp_display = self.level_manager.xp
+        self.displayed_xp += (target_xp_display - self.displayed_xp) * 0.1
+
+        # --- ANIMACJA ALPHA OKNA NAGRÓD ---
+        target_alpha = 0
+        if self.show_reward_selection and not self.is_closing_rewards:
+            target_alpha = 255
+            self.reward_shown_timer += dt
+        
+        # Płynne przejście alpha (prędkość 10.0 steruje szybkością fade'u)
+        alpha_speed = 10.0 * dt * 60 
+        if self.reward_alpha < target_alpha:
+            self.reward_alpha = min(target_alpha, self.reward_alpha + alpha_speed)
+        elif self.reward_alpha > target_alpha:
+            self.reward_alpha = max(target_alpha, self.reward_alpha - alpha_speed)
+            if self.reward_alpha <= 0 and self.is_closing_rewards:
+                self._actually_close_rewards() # Całkowite zamknięcie po wygaśnięciu
         self.fps = current_fps
         self.pulse_time += dt
         self.displayed_hp += (self.space_ship.hp - self.displayed_hp) * 0.1
@@ -338,8 +398,17 @@ class UI:
 
         # 4. XP & LEVEL Section
         xp_y = self.y_pos + self.slot_size + 22
-        xp_ratio = max(0, min(1, self.level_manager.xp / self.level_manager.max_xp))
-        ghost_xp = max(0, min(1, self.displayed_xp / self.level_manager.max_xp))
+        
+        # OBLICZENIA RELATYWNE (od zera do max na danym poziomie)
+        current_relative_xp = max(0, self.level_manager.xp - self.prev_max_xp)
+        displayed_relative_xp = max(0, self.displayed_xp - self.prev_max_xp)
+        level_capacity = max(1, self.level_manager.max_xp - self.prev_max_xp)
+
+        xp_ratio = max(0, min(1, current_relative_xp / level_capacity))
+        ghost_xp = max(0, min(1, displayed_relative_xp / level_capacity))
+        
+        #xp_ratio = max(0, min(1, self.level_manager.xp / self.level_manager.max_xp))
+        #ghost_xp = max(0, min(1, self.displayed_xp / self.level_manager.max_xp))
         
         # Pasek XP
         pygame.draw.rect(window, (20, 20, 35), (start_x, xp_y, total_w, 6), border_radius=3)

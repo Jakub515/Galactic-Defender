@@ -1,5 +1,5 @@
 import pygame
-import os
+import json
 
 # Importy Twoich modułów
 import jednostki.space_ship as space_ship
@@ -36,7 +36,30 @@ class Game:
         
         # --- Konfiguracja Świata ---
         self.WORLD_CENTER = pygame.math.Vector2(0, 0)
-        self.WORLD_RADIUS = 25_000
+        with open('./data/level_slownik.json', 'r', encoding='utf-8') as f:
+            data = json.load(f)
+            
+        level_data = data.get("level_1", {})
+        world_config = level_data.get("world_config", {})
+
+        # Pobieramy promień, a jeśli go nie ma - ustawiamy domyślny 25000
+        self.WORLD_RADIUS = world_config.get("word_radius", 2500)
+        
+        self.pola_asteroid = []
+        raw_asteroids = world_config.get("asteroid_data", [])
+
+        for entry in raw_asteroids:
+            # Tworzymy strukturę akceptowaną przez AsteroidManager
+            aster_zone = {
+                "pos": pygame.math.Vector2(
+                    entry.get("center_x", 0), 
+                    entry.get("center_y", 0)
+                ),
+                "radius": entry.get("radius", 1000),
+                "count": entry.get("count", 20)
+            }
+            self.pola_asteroid.append(aster_zone)
+        # self.WORLD_RADIUS = data["level_1"]["world_config"]["word_radius"]
         self.FADE_ZONE = 2000
         self.dist = 0  # Dystans gracza od środka świata
         
@@ -56,11 +79,8 @@ class Game:
         )
 
         # --- Zarządzanie Obiektami ---
-        self.pola_asteroid = [
-            {"pos": pygame.math.Vector2(0, 0), "radius": 22000, "count": 250},
-            {"pos": pygame.math.Vector2(0, 0), "radius": 4500, "count": 50}
-        ]
-        self.asteroid_manager = AsteroidManager(gfx_100, self.pola_asteroid)
+        
+        self.asteroid_manager = AsteroidManager(gfx_100, self.pola_asteroid, self.WORLD_RADIUS)
         self.enemy_manager = EnemyManager(
             gfx_40, self.player, self.music_obj, 5, 
             self.shoot_obj, self.WORLD_RADIUS, self.asteroid_manager
@@ -93,7 +113,13 @@ class Game:
             return
 
         # 1. Update managerów i obiektów
-        self.level_manager.update(dt)
+        ret = self.level_manager.update(dt)
+        if ret is not None:
+            self.WORLD_RADIUS = ret[0]
+            self.player.reinit_pos()
+            self.asteroid_manager.reinit_asteroid_data(ret[1], self.WORLD_RADIUS)
+            self.radar_obj.world_radius = self.WORLD_RADIUS
+            
         self.game_controller.update(dt)
         self.player.update(dt)
         self.player_shoot.update(dt, self.enemy_manager)
