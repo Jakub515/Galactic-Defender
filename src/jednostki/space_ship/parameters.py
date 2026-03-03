@@ -3,8 +3,8 @@ import json
 class Parameters:
     def __init__(self, ship_frames):
         # --- STATYSTYKI ŻYCIA ---
-        self.hp = 100
-        self.max_hp = 100
+        self.hp = 1000
+        self.max_hp = 1000
         self.hp_reg_speed = 1
 
         # --- FIZYKA I PRĘDKOŚĆ ---

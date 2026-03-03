@@ -1,5 +1,5 @@
 import pygame
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Dict, Tuple
 
 if TYPE_CHECKING:
     from music import MusicManager
@@ -9,40 +9,50 @@ if TYPE_CHECKING:
     from jednostki.space_ship import SpaceShip, Battle
     from jednostki.enemy_ship.enemy_manager import EnemyManager
 
-class Collision():
-    def __init__(self, mixer_obj: "MusicManager", cxx: int, cyy: int, enemy_manager: "EnemyManager"):
+class Collision:
+    def __init__(self, mixer_obj: "MusicManager", cxx: int, cyy: int, enemy_manager: "EnemyManager", WORLD_RADIUS:int):
         self.music_obj = mixer_obj
-        self._mask_cache = {}
+        # Cache przechowuje (rect, mask) dla danej rotacji obrazu
+        self._mask_cache: Dict[Tuple[int, int], Tuple[pygame.Rect, pygame.mask.Mask]] = {}
         self.cxx = cxx
         self.cyy = cyy
         self.enemy_manager = enemy_manager
+        self.WORLD_RADIUS = WORLD_RADIUS  # Przykładowa wartość, dostosuj do gry
+        
+    def reload_world_radius(self, rad):
+        self.WORLD_RADIUS = rad
 
     def get_masked_data(self, image: pygame.Surface, pos: pygame.math.Vector2, angle: float, obj_id: int):
-        cache_key = (obj_id, int(angle % 360))
+        angle_key = int(angle % 360)
+        cache_key = (obj_id, angle_key)
+        
         if cache_key in self._mask_cache:
-            return self._mask_cache[cache_key]
+            rect, mask = self._mask_cache[cache_key]
+            # Kluczowe: tworzymy kopię rect, żeby nie zmieniać oryginału w cache
+            new_rect = rect.copy()
+            new_rect.center = (int(pos.x), int(pos.y))
+            return new_rect, mask
 
         rotated_image = pygame.transform.rotate(image, angle)
-        rect = rotated_image.get_rect(center=(int(pos.x), int(pos.y)))
         mask = pygame.mask.from_surface(rotated_image)
+        rect = rotated_image.get_rect(center=(int(pos.x), int(pos.y)))
         
-        result = (rect, mask)
-        self._mask_cache[cache_key] = result
-        return result
+        if len(self._mask_cache) > 1000:
+            self._mask_cache.clear()
+            
+        self._mask_cache[cache_key] = (rect, mask)
+        return rect, mask
 
     def check_collisions(self, battle: "Battle", player: "SpaceShip", enemy_manager: "EnemyManager", 
                          shoot_obj: "Shoot", asteroid_manager: "AsteroidManager", level_manager: "LevelManager"):
-        self._mask_cache = {}  
-        player_pos = player.player_pos
         
-        # OPTYMALIZACJA 1: Wykorzystanie Rect jako obszaru aktywnego (szybsze niż liczenie pierwiastków)
+        player_pos = player.player_pos
         active_rect = pygame.Rect(0, 0, self.cxx * 2.2, self.cyy * 2.2)
         active_rect.center = player_pos
 
-        active_enemies = [e for e in enemy_manager.enemies if not e.is_dead and active_rect.collidepoint(e.pos)]
+        active_enemies = [e for e in enemy_manager.enemies if (not e.is_dead) and active_rect.collidepoint(e.pos)]
         active_asteroids = [a for a in asteroid_manager.asteroids if active_rect.collidepoint(a.pos)]
 
-        # OPTYMALIZACJA 2: Podział pocisków na grupy (unikamy sprawdzania shot.get w pętlach)
         player_shots = []
         enemy_shots = []
         for s in shoot_obj.shots:
@@ -56,96 +66,130 @@ class Collision():
             r1, m1 = data1
             r2, m2 = data2
             if r1.colliderect(r2):
-                return m1.overlap(m2, (r2.left - r1.left, r2.top - r1.top))
+                offset = (r2.left - r1.left, r2.top - r1.top)
+                return m1.overlap(m2, offset)
             return None
 
-        # --- 1. KOLIZJE POCISKÓW (CCD - Continuous Collision Detection) ---
-        
-        # A. POCISKI GRACZA -> Wrogowie i Asteroidy
+        # --- 1. POCISKI GRACZA --- (bez zmian)
         for shot in player_shots:
             shot_pos = shot["pos"]
-            old_pos = shot_pos - shot.get("vel", pygame.math.Vector2(0,0))
+            vel = shot.get("vel", pygame.math.Vector2(0, 0))
+            old_pos = shot_pos - vel
             shot_hit = False
 
-            # Vs Asteroidy
-            for asteroid in active_asteroids:
-                r_ast, _ = self.get_masked_data(asteroid.original_image, asteroid.pos, asteroid.angle, id(asteroid))
-                if r_ast.clipline(old_pos.x, old_pos.y, shot_pos.x, shot_pos.y):
-                    shot_hit = True
-                    break
+            if shot_pos.length_squared() > self.WORLD_RADIUS**2:
+                shot_hit = True
+
+            if not shot_hit:
+                for asteroid in active_asteroids:
+                    r_ast, _ = self.get_masked_data(asteroid.original_image, asteroid.pos, asteroid.angle, id(asteroid))
+                    if r_ast.clipline((old_pos.x, old_pos.y), (shot_pos.x, shot_pos.y)):
+                        shot_hit = True
+                        break
             
-            # Vs Wrogowie (tylko jeśli nie trafił w asteroidę)
             if not shot_hit:
                 for enemy in active_enemies:
                     e_base = enemy_manager.ship_base_images[enemy.type_name]
                     r_en, _ = self.get_masked_data(e_base, enemy.pos, enemy.angle, id(enemy))
-                    if r_en.clipline(old_pos.x, old_pos.y, shot_pos.x, shot_pos.y):
+                    if r_en.clipline((old_pos.x, old_pos.y), (shot_pos.x, shot_pos.y)):
                         actual_damage = min(shot["damage"], enemy.hp)
                         level_manager.xp += actual_damage
                         enemy.hp -= shot["damage"]
                         if enemy.hp <= 0: enemy.death()
                         shot_hit = True
                         break
+                
+            if shot_hit: 
+                self._process_shot_impact(shot, shoot_obj)
 
-            if shot_hit: self._process_shot_impact(shot, shoot_obj)
-
-        # B. POCISKI WROGÓW -> Gracz i Asteroidy
+        # --- 2. POCISKI WROGÓW ---
         for shot in enemy_shots:
             shot_pos = shot["pos"]
             old_pos = shot_pos - shot.get("vel", pygame.math.Vector2(0,0))
             shot_hit = False
 
+            if shot_pos.length_squared() > self.WORLD_RADIUS**2:
+                shot_hit = True
+
             # Vs Asteroidy
-            for asteroid in active_asteroids:
-                r_ast, _ = self.get_masked_data(asteroid.original_image, asteroid.pos, asteroid.angle, id(asteroid))
-                if r_ast.clipline(old_pos.x, old_pos.y, shot_pos.x, shot_pos.y):
-                    shot_hit = True
-                    break
+            if not shot_hit:
+                for asteroid in active_asteroids:
+                    r_ast, _ = self.get_masked_data(asteroid.original_image, asteroid.pos, asteroid.angle, id(asteroid))
+                    if r_ast.clipline((old_pos.x, old_pos.y), (shot_pos.x, shot_pos.y)):
+                        shot_hit = True
+                        break
 
             # Vs Gracz
             if not shot_hit:
                 r_pl, _ = self.get_masked_data(player.ship_rot, player_pos, player.angle, id(player))
-                if r_pl.clipline(old_pos.x, old_pos.y, shot_pos.x, shot_pos.y):
+                if r_pl.clipline((old_pos.x, old_pos.y), (shot_pos.x, shot_pos.y)):
                     if not battle.shield_active:
                         player.hp -= shot["damage"]
                     else:
-                        if not player.is_destroyed:
-                            self.music_obj.play("./data/images/audio/kenney_sci-fi-sounds/forceField_001.wav", 0.25)
+                        self.music_obj.play("./data/images/audio/kenney_sci-fi-sounds/forceField_001.wav", 0.25)
+                    
                     shot_hit = True
                     if player.hp <= 0: return True
 
-            if shot_hit: self._process_shot_impact(shot, shoot_obj)
+            # --- NOWOŚĆ: Vs Inni Wrogowie (Friendly Fire) ---
+            if not shot_hit:
+                shot_owner_id = shot.get("enemy_id")
+                for other_enemy in active_enemies:
+                    # Sprawdzamy, czy pocisk nie należy do tego konkretnego wroga
+                    if other_enemy.id == shot_owner_id:
+                        continue
+                    
+                    e_base = enemy_manager.ship_base_images[other_enemy.type_name]
+                    r_en, _ = self.get_masked_data(e_base, other_enemy.pos, other_enemy.angle, id(other_enemy))
+                    
+                    if r_en.clipline((old_pos.x, old_pos.y), (shot_pos.x, shot_pos.y)):
+                        other_enemy.hp -= shot["damage"]
+                        if other_enemy.hp <= 0: 
+                            other_enemy.death()
+                        shot_hit = True
+                        break
 
-        # --- 2. OBIEKTY FIZYCZNE ---
+            if shot_hit: 
+                self._process_shot_impact(shot, shoot_obj)
+
+        # --- 3. OBIEKTY FIZYCZNE --- (dalsza część bez zmian)
+        # ... reszta kodu ...
+        # --- 3. OBIEKTY FIZYCZNE ---
         p_data = self.get_masked_data(player.ship_rot, player_pos, player.angle, id(player))
 
         # Gracz vs Asteroidy/Wrogowie
         for asteroid in active_asteroids:
             if (player_pos - asteroid.pos).length_squared() < (45 + asteroid.radius)**2:
-                if are_colliding(p_data, self.get_masked_data(asteroid.original_image, asteroid.pos, asteroid.angle, id(asteroid))):
+                a_data = self.get_masked_data(asteroid.original_image, asteroid.pos, asteroid.angle, id(asteroid))
+                if are_colliding(p_data, a_data):
                     self._handle_asteroid_impact(player, asteroid, 15)
                     if player.hp <= 0: return True
 
         if not player.is_destroyed:
             for enemy in active_enemies:
                 if (player_pos - enemy.pos).length_squared() < 100**2:
-                    e_data = self.get_masked_data(enemy_manager.ship_base_images[enemy.type_name], enemy.pos, enemy.angle, id(enemy))
+                    e_base = enemy_manager.ship_base_images[enemy.type_name]
+                    e_data = self.get_masked_data(e_base, enemy.pos, enemy.angle, id(enemy))
                     if are_colliding(p_data, e_data):
                         self._handle_ship_collision(player, enemy)
+                        if player.hp <= 0: return True
 
-        # Wrogowie vs Asteroidy i Inni Wrogowie
+        # Wrogowie vs reszta świata
         for i, enemy in enumerate(active_enemies):
-            e_data = self.get_masked_data(enemy_manager.ship_base_images[enemy.type_name], enemy.pos, enemy.angle, id(enemy))
+            e_base = enemy_manager.ship_base_images[enemy.type_name]
+            e_data = self.get_masked_data(e_base, enemy.pos, enemy.angle, id(enemy))
             
             for asteroid in active_asteroids:
                 if (enemy.pos - asteroid.pos).length_squared() < (50 + asteroid.radius)**2:
-                    if are_colliding(e_data, self.get_masked_data(asteroid.original_image, asteroid.pos, asteroid.angle, id(asteroid))):
+                    a_data = self.get_masked_data(asteroid.original_image, asteroid.pos, asteroid.angle, id(asteroid))
+                    if are_colliding(e_data, a_data):
                         self._handle_asteroid_impact(enemy, asteroid, 30)
                         break
             
             for other_enemy in active_enemies[i+1:]:
                 if (enemy.pos - other_enemy.pos).length_squared() < 85**2:
-                    o_data = self.get_masked_data(enemy_manager.ship_base_images[other_enemy.type_name], other_enemy.pos, other_enemy.angle, id(other_enemy))
+                    o_base = enemy_manager.ship_base_images[other_enemy.type_name]
+                    o_data = self.get_masked_data(o_base, other_enemy.pos, other_enemy.angle, id(other_enemy))
                     if are_colliding(e_data, o_data):
                         self._handle_enemy_to_enemy_collision(enemy, other_enemy)
         
@@ -161,7 +205,11 @@ class Collision():
 
     def _handle_enemy_to_enemy_collision(self, e1, e2):
         push_dir = (e1.pos - e2.pos)
-        push_dir = push_dir.normalize() if push_dir.length_squared() > 0 else pygame.math.Vector2(1, 0)
+        if push_dir.length_squared() > 0:
+            push_dir = push_dir.normalize()
+        else:
+            push_dir = pygame.math.Vector2(1, 0)
+            
         e1.pos += push_dir * 10
         e2.pos -= push_dir * 10
         e1.hp = 0
@@ -170,57 +218,46 @@ class Collision():
         e2.death()
 
     def _handle_asteroid_impact(self, ship, asteroid, damage: int):
+        # Ujednolicenie dostępu do pozycji
         is_player = hasattr(ship, 'player_pos')
-        ship_pos = ship.player_pos if is_player else ship.pos
+        current_pos = ship.player_pos if is_player else ship.pos
         
-        # 1. Obliczamy wektor od środka asteroidy do statku
-        push_dir = (ship_pos - asteroid.pos)
-        
-        # 2. Normalizacja (nadajemy mu długość 1)
-        if push_dir.length_squared() > 0:
-            push_dir = push_dir.normalize()
-        else:
-            push_dir = pygame.math.Vector2(1, 0) # Awaryjny wektor w prawo
-
-        # 3. NADANIE PRĘDKOŚCI (Odrzut)
-        # Zmieniamy velocity statku, aby odleciał z dużą siłą
-        recoil_strength = 15  # Dostosuj moc odrzutu
-        if hasattr(ship, 'velocity'):
-            ship.velocity = push_dir * recoil_strength
-
-        # 4. ROZDZIELENIE (Zapobieganie utknięciu w asteroidzie)
-        # Przesuwamy statek na krawędź asteroidy + mały margines
-        safe_distance = asteroid.radius + 35 
-        if is_player:
-            ship.player_pos = asteroid.pos + push_dir * safe_distance
-            # Pozostała Twoja logika
-            ship.hp = 0
-            ship.destroy_cause_collision()
-        else:
-            ship.pos = asteroid.pos + push_dir * safe_distance
-            ship.hp = 0
-            ship.death()
-
-    def _handle_ship_collision(self, player, enemy):
-        # 1. Wektor od wroga do gracza
-        push_dir = (player.player_pos - enemy.pos)
-        
+        push_dir = (current_pos - asteroid.pos)
         if push_dir.length_squared() > 0:
             push_dir = push_dir.normalize()
         else:
             push_dir = pygame.math.Vector2(1, 0)
 
-        # 2. ODRZUT DLA OBU JEDNOSTEK
+        recoil_strength = 15
+        if hasattr(ship, 'velocity'):
+            ship.velocity = push_dir * recoil_strength
+
+        safe_distance = asteroid.radius + 35 
+        new_pos = asteroid.pos + push_dir * safe_distance
+        
+        if is_player:
+            ship.player_pos = new_pos
+            ship.hp = 0
+            ship.destroy_cause_collision()
+        else:
+            ship.pos = new_pos
+            ship.hp = 0
+            ship.death()
+
+    def _handle_ship_collision(self, player, enemy):
+        push_dir = (player.player_pos - enemy.pos)
+        if push_dir.length_squared() > 0:
+            push_dir = push_dir.normalize()
+        else:
+            push_dir = pygame.math.Vector2(1, 0)
+
         force = 15
         if hasattr(player, 'velocity'):
             player.velocity = push_dir * force
         if hasattr(enemy, 'velocity'):
-            enemy.velocity = -push_dir * force # Wróg leci w przeciwną stronę
+            enemy.velocity = -push_dir * force
 
-        # 3. ROZDZIELENIE (Przeskok o 20px, by nie nakładały się w klatce wybuchu)
         player.player_pos += push_dir * 20
-        
-        # Pozostała Twoja logika HP
         player.hp = 0
         enemy.hp = 0
         enemy.death()

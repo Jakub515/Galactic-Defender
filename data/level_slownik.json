@@ -2,7 +2,7 @@
     "level_1": {
         "max-enemy": 5, "max-xp": 50,
         "world_config": {
-            "word_radius": 3000,
+            "word_radius": 4500,
             "asteroid_data": [
                 {"center_x": 0, "center_y": 0, "radius": 2500, "count": 40}
             ]

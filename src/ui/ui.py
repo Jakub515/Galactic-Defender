@@ -19,8 +19,8 @@ class GameController:
         self.input_handler.update()
         self.ui.update(self.clock.get_fps(), dt)
 
-    def draw(self, window: pygame.Surface):
-        self.ui.draw(window)
+    def draw(self, window: pygame.Surface, camera):
+        self.ui.draw(window, camera)
 
 class InputHandler:
     def __init__(self, event_obj: "Event", player_obj: "SpaceShip", player_shoot: "Battle", ui_obj: "UI", collision:"Collision", enemy_manager: "EnemyManager"):
@@ -328,7 +328,11 @@ class UI:
             self.reward_shown_timer += dt
         self._handle_reward_input()
 
-    def draw(self, window):
+    def draw(self, window, camera):
+        #0. celownik
+        
+        self._draw_enemy_lock_on(window, camera)
+        
         # 1. Background Overlay
         overlay = pygame.Surface((self.cxx, 115), pygame.SRCALPHA)
         pygame.draw.rect(overlay, (0, 0, 0, 140), (0, 0, self.cxx, 115))
@@ -439,6 +443,11 @@ class UI:
         self._draw_reward_boxes(window)
 
     def _draw_targeting_module(self, window, theme_color):
+        if self.battle.active_set != 2:
+            # Opcjonalnie: możemy tu zresetować namierzonego wroga, 
+            # aby lasery nie "pamiętały" celu z rakiet
+            self.battle.chosen_enemy = None
+            return
         ui_x, ui_y = 25, self.cyy - 105
         panel_w, panel_h = 250, 80
         
@@ -448,7 +457,7 @@ class UI:
         min_d = min(dists) if dists else 9999
         
         is_active = min_d < 3000
-        self.battle.enemy_choose(self.last_celowanie_mode if is_active else 0)
+        self.battle.chosen_enemy = self.battle.enemy_choose(self.last_celowanie_mode if is_active else 0)
 
         # Panel Drawing
         surf = pygame.Surface((panel_w, panel_h), pygame.SRCALPHA)
@@ -476,7 +485,7 @@ class UI:
         # Keys
         for i, (k, m) in enumerate([("R", 1), ("T", 2)]):
             col = (255, 255, 255) if self.last_celowanie_mode == m else (80, 80, 80)
-            window.blit(self.font.render(k, True, col), (ui_x + panel_w - 45 + i*20, ui_y + 12))
+            window.blit(self.font.render(k, True, col), ((ui_x + panel_w - 45 + i*20)+10, ui_y + 12))
 
     def _draw_skill_bar(self, window, x, label, ratio, color):
         bar_w, bar_h = 10, self.slot_size
@@ -497,3 +506,89 @@ class UI:
         text_y = self.y_pos + bar_h + 5
         
         window.blit(text_surf, (text_x, text_y))
+        
+    # W pliku ui.py podmień metodę _draw_enemy_lock_on:
+    def _draw_enemy_lock_on(self, window, camera):
+        if self.battle.active_set != 2:
+            return
+        
+        target = getattr(self.battle, 'chosen_enemy', None)
+        if not target or getattr(target, 'hp', 0) <= 0:
+            return
+
+        target_screen_pos = camera.apply(target.pos)
+        tx, ty = target_screen_pos[0], target_screen_pos[1]
+        color = (255, 50, 50) 
+
+        is_off_screen = (tx < 0 or tx > self.cxx or ty < 115 or ty > self.cyy)
+
+        if not is_off_screen:
+            # --- 1. CELOWNIK NA EKRANIE (bez zmian, dla spójności) ---
+            size = 50 + 5 * math.sin(self.pulse_time * 12)
+            rect = pygame.Rect(0, 0, size, size)
+            rect.center = (int(tx), int(ty))
+            thickness = 2
+            length = int(size * 0.25)
+            pygame.draw.lines(window, color, False, [(rect.left, rect.top + length), (rect.left, rect.top), (rect.left + length, rect.top)], thickness)
+            pygame.draw.lines(window, color, False, [(rect.right - length, rect.top), (rect.right, rect.top), (rect.right, rect.top + length)], thickness)
+            pygame.draw.lines(window, color, False, [(rect.left, rect.bottom - length), (rect.left, rect.bottom), (rect.left + length, rect.bottom)], thickness)
+            pygame.draw.lines(window, color, False, [(rect.right - length, rect.bottom), (rect.right, rect.bottom), (rect.right, rect.bottom - length)], thickness)
+            pygame.draw.circle(window, color, rect.center, 3)
+            dist = self.space_ship.player_pos.distance_to(target.pos)
+            dist_txt = self.font.render(f"{int(dist)}m", True, color)
+            window.blit(dist_txt, (rect.centerx - dist_txt.get_width()//2, rect.bottom + 5))
+
+        else:
+            # --- 2. ŁADNIEJSZA STRZAŁKA POZA EKRANEM ---
+            margin = 40
+            ui_offset_y = 115
+            
+            # Animacja pulsowania (odległość od krawędzi)
+            bounce = math.sin(self.pulse_time * 10) * 5
+            
+            # Wyznaczanie pozycji na krawędzi
+            edge_x = max(margin, min(self.cxx - margin, tx))
+            edge_y = max(margin + ui_offset_y, min(self.cyy - margin, ty))
+            
+            arrow_pos = pygame.math.Vector2(edge_x, edge_y)
+            
+            # Obliczanie kierunku do celu
+            direction = pygame.math.Vector2(tx, ty) - arrow_pos
+            if direction.length() > 0:
+                angle = math.degrees(math.atan2(direction.y, direction.x))
+                # Przesunięcie o bounce w stronę celu
+                arrow_pos += direction.normalize() * bounce
+            else:
+                angle = 0
+
+            # --- EFEKT POŚWIATY (Glow) ---
+            glow_surf = pygame.Surface((60, 60), pygame.SRCALPHA)
+            glow_alpha = int(100 + 50 * math.sin(self.pulse_time * 10))
+            pygame.draw.circle(glow_surf, (color[0], color[1], color[2], glow_alpha // 3), (30, 30), 25)
+            pygame.draw.circle(glow_surf, (color[0], color[1], color[2], glow_alpha // 6), (30, 30), 15)
+            window.blit(glow_surf, glow_surf.get_rect(center=(int(arrow_pos.x), int(arrow_pos.y))))
+
+            # --- RYSOWANIE STRZAŁKI (Trójkąt równoramienny, ostrzejszy) ---
+            p1 = arrow_pos + pygame.math.Vector2(18, 0).rotate(angle)      # Czubek (dłuższy)
+            p2 = arrow_pos + pygame.math.Vector2(-12, -8).rotate(angle)    # Tył góra
+            p3 = arrow_pos + pygame.math.Vector2(-12, 8).rotate(angle)     # Tył dół
+            
+            # Obrys dla lepszej widoczności na jasnym tle
+            pygame.draw.polygon(window, (20, 20, 20), [p1, p2, p3], 4) 
+            pygame.draw.polygon(window, color, [p1, p2, p3])
+            
+            # --- DYSTANS (Z tłem pod tekstem) ---
+            dist = self.space_ship.player_pos.distance_to(target.pos)
+            dist_txt = self.font.render(f"{int(dist)}m", True, (255, 255, 255))
+            
+            # Pozycja tekstu zawsze lekko "do wewnątrz" ekranu od strzałki
+            text_off = pygame.math.Vector2(-45, 0).rotate(angle)
+            # Zabezpieczenie, żeby tekst nie uciekł za ekran
+            tx_final = max(50, min(self.cxx - 50, arrow_pos.x + text_off.x))
+            ty_final = max(ui_offset_y + 20, min(self.cyy - 20, arrow_pos.y + text_off.y))
+            
+            # Mały cień pod tekstem
+            dist_rect = dist_txt.get_rect(center=(tx_final, ty_final))
+            bg_rect = dist_rect.inflate(8, 4)
+            pygame.draw.rect(window, (0, 0, 0, 150), bg_rect, border_radius=4)
+            window.blit(dist_txt, dist_rect)

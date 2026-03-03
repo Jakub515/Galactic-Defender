@@ -87,7 +87,7 @@ class Game:
         )
 
         # --- UI i Systemy Pomocnicze ---
-        self.colision_obj = collisions.Collision(self.music_obj, self.cxx, self.cyy, self.enemy_manager)
+        self.colision_obj = collisions.Collision(self.music_obj, self.cxx, self.cyy, self.enemy_manager, self.WORLD_RADIUS)
         self.radar_obj = radar.Radar(self.cxx, self.cyy, 200, self.WORLD_RADIUS)
         self.level_manager = level_manager.LevelManager(self.enemy_manager)
         
@@ -119,6 +119,7 @@ class Game:
             self.player.reinit_pos()
             self.asteroid_manager.reinit_asteroid_data(ret[1], self.WORLD_RADIUS)
             self.radar_obj.world_radius = self.WORLD_RADIUS
+            self.colision_obj.reload_world_radius(self.WORLD_RADIUS)
             
         self.game_controller.update(dt)
         self.player.update(dt)
@@ -174,5 +175,6 @@ class Game:
         self.player_shoot.draw(window, p_draw[0], p_draw[1])
 
         # --- 4. Interfejs (na sztywno do współrzędnych ekranu) ---
-        self.radar_obj.draw(window, self.player, self.enemy_manager, self.asteroid_manager, dt)
-        self.game_controller.draw(window)
+        self.radar_obj.draw(window, self.player, self.enemy_manager, self.asteroid_manager, dt, self.player_shoot)
+        self.game_controller.draw(window, self.camera)
+        

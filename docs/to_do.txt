@@ -1,4 +1,4 @@
-1. None
+1. Wyświetlanie aktualnie namierzonego przeciswnika, strzałki jak poza ekranem
 
 jakiś czas temu mieżone:
 liczba wierszy plików .py:   2743

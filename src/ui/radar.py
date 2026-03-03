@@ -36,7 +36,7 @@ class Radar:
         self.pulse_speed = 0.35     
         self.num_circles = 2        
 
-    def draw(self, window:pygame.Surface, player: "SpaceShip", enemy_manager: "EnemyManager", asteroid_manager: "AsteroidManager", dt: float):
+    def draw(self, window:pygame.Surface, player: "SpaceShip", enemy_manager: "EnemyManager", asteroid_manager: "AsteroidManager", dt: float, battle=None):
         """
         Renderuje radar, w tym gracza, przeciwników oraz asteroidy.
         """
@@ -82,11 +82,27 @@ class Radar:
                 pygame.draw.circle(temp_radar, self.asteroid_color, (int(radar_pos.x), int(radar_pos.y)), 2)
 
         # --- WROGOWIE ---
+        # --- WROGOWIE ---
+        target_id = getattr(battle, 'enemy_selected', None) # Pobieramy ID celu
+
         for enemy in enemy_manager.enemies:
+            if getattr(enemy, 'is_dead', False): continue # Pomijaj martwych
+            
             rel_pos = enemy.pos - player.player_pos
             if rel_pos.length() < self.zoom_radius:
                 radar_pos = center + rel_pos * self.scale
-                pygame.draw.circle(temp_radar, self.enemy_color, (int(radar_pos.x), int(radar_pos.y)), 3)
+                
+                # ZMIANA KOLORU: jeśli to nasz cel, rysujemy go na żółto/złoto
+                if target_id and enemy.id == target_id:
+                    color = (255, 255, 0) # Żółty dla zaznaczonego
+                    radius = 5 # Nieco większa kropka
+                else:
+                    color = self.enemy_color
+                    radius = 3
+                    
+                pygame.draw.circle(temp_radar, color, (int(radar_pos.x), int(radar_pos.y)), radius)
+        
+        # ... (reszta metody bez zmian) ...
 
         # --- GRACZ I JEGO KIERUNEK ---
         direction_vec = pygame.math.Vector2(7, 0).rotate(-player.angle)
