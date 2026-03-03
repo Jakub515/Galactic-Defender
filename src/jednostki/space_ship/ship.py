@@ -79,30 +79,39 @@ class SpaceShip():
         self.ship_rot = self.actual_frame
         
     def reinit_pos(self):
-        # 1. Reset pozycji
+        # 1. Reset pozycji i fizyki ruchu
         self.player_pos = pygame.math.Vector2(self.player_x_start_pos, self.player_y_start_pos)
-        
-        # 2. KLUCZOWE: Reset prędkości liniowej do zera
         self.velocity = pygame.math.Vector2(0, 0)
         
-        # 3. Reset rotacji i prędkości obrotowej
+        # 2. Reset rotacji
         self.angle = 90
         self.angular_velocity = 0
         self.rotation_dir = 0
         
-        # 4. Reset kierunku patrzenia
+        # 3. Reset kierunku patrzenia (forward vector)
         rad = math.radians(-self.angle)
         self.forward_dir = pygame.math.Vector2(math.cos(rad), math.sin(rad))
         
-        # 5. Czyszczenie efektów wizualnych, żeby nie "zostały" w starym miejscu
+        # 4. CZYSZCZENIE EFEKTÓW (Wizualne sprzątanie po "poprzednim życiu")
         self.trail_points = []
+        self.debris_particles = []    # Czyścimy szczątki wybuchu
+        self.particles = []           # Czyścimy inne cząsteczki
         self.last_trail_pos = self.player_pos.copy()
+        self.explosion_flash = 0      # Reset błysku wybuchu
         
-        # 6. Reset statusów
+        # 5. REINICJALIZACJA STATUSÓW I ŻYCIA
+        self.is_destroyed = False     # Przywrócenie do życia
+        self.hp = self.max_hp         # Pełne HP
+        self.hp_timer = 0.0           # Reset timera regeneracji
+        
+        # 6. Reset boosta
+        self.boost_cooldown = 0.0
+        self.is_boost_ready = True
+        
+        # 7. Reset flag sterowania
         self.is_thrusting = False
         self.is_braking = False
         self.is_boosting = False
-        self.is_destroyed = False # Jeśli chcesz też ożywić statek
         
     @property
     def linear_friction(self):
