@@ -1,5 +1,4 @@
 import pygame
-import math
 from typing import TYPE_CHECKING, Optional, Any
 
 if TYPE_CHECKING:
@@ -113,6 +112,7 @@ class Battle():
 
         if self.active_set == 1: # Lasery
             shot_data["rocket"] = False
+            self.music_obj.play("./data/images/audio/sfx_laser1.wav", 0.7, sound_is_laser=True)
         else: # Rakiety
             shot_data.update({
                 "rocket": True,
@@ -120,11 +120,9 @@ class Battle():
                 "time-alive-all": w_data[6],
                 "steer-limit": w_data[7]
             })
-
+            self.music_obj.play("./data/images/audio/sfx_laser1.wav", 0.7, sound_is_laser=False)
         self.shoot_obj.create_missle(shot_data)
-        
-        if self.music_obj:
-            self.music_obj.play("./data/images/audio/sfx_laser1.wav", 0.7)
+            
 
     def update(self, dt: float, enemy_manager: "EnemyManager"):
         if self.switch_cooldown > 0:

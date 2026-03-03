@@ -21,7 +21,6 @@ bg = sky.SpaceBackground(cxx, cyy, cxx, cyy, 50)
 def main():
     # Tworzymy obiekt Game przekazując mu wszystko co potrzebuje
     game_obj = Game(cxx, cyy, gfx_40, gfx_100, audio, music_obj, events_obj, clock)
-
     running = True
     last_esc_state = False
     while running:

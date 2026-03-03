@@ -237,8 +237,10 @@ class Enemy:
                 "steer-limit": weapon_info[7]                  # Poprawny indeks 7
             })
         if self.music_obj:
-            sfx = "./data/images/audio/sfx_laser2.wav" if is_rocket else "./data/images/audio/sfx_laser1.wav"
-            self.music_obj.play(sfx, 0.25)
+            if is_rocket:
+                self.music_obj.play("./data/images/audio/sfx_laser1.wav", 0.25)
+            else:
+                self.music_obj.play("./data/images/audio/sfx_laser1.wav", 0.25, sound_is_laser=True)
 
     def draw(self, window: pygame.Surface, camera_x: float, camera_y: float):
         if self.is_dead:

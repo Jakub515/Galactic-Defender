@@ -1,7 +1,8 @@
 import pygame
 import json
+import time  # Dodajemy moduł czasu
 
-# Importy Twoich modułów
+# Importy modułów
 import jednostki.space_ship as space_ship
 import utils.collisions as collisions
 import jednostki.shoot as shoot
@@ -16,59 +17,37 @@ class Game:
     def __init__(self, screen_width: int, screen_height: int, 
                  gfx_40: dict, gfx_100: dict, audio_files: list, 
                  music_obj, events_obj, clock):
-        """
-        Główna klasa logiki gry.
-        :param screen_width: Szerokość okna (cxx)
-        :param screen_height: Wysokość okna (cyy)
-        :param gfx_40: Słownik obrazów przeskalowanych do 40%
-        :param gfx_100: Słownik obrazów przeskalowanych do 100%
-        :param audio_files: Lista ścieżek do plików dźwiękowych
-        :param music_obj: Instancja MusicManager
-        :param events_obj: Instancja Event
-        :param clock: Obiekt pygame.time.Clock
-        """
-        # --- Atrybuty podstawowe ---
+        
+
+        # 1. Atrybuty podstawowe
         self.cxx = screen_width
         self.cyy = screen_height
         self.clock = clock
         self.music_obj = music_obj
         self.events_obj = events_obj
         
-        # --- Konfiguracja Świata ---
         self.WORLD_CENTER = pygame.math.Vector2(0, 0)
         with open('./data/level_slownik.json', 'r', encoding='utf-8') as f:
             data = json.load(f)
-            
         level_data = data.get("level_1", {})
         world_config = level_data.get("world_config", {})
-
-        # Pobieramy promień, a jeśli go nie ma - ustawiamy domyślny 25000
         self.WORLD_RADIUS = world_config.get("word_radius", 2500)
-        
         self.pola_asteroid = []
         raw_asteroids = world_config.get("asteroid_data", [])
-
         for entry in raw_asteroids:
-            # Tworzymy strukturę akceptowaną przez AsteroidManager
             aster_zone = {
-                "pos": pygame.math.Vector2(
-                    entry.get("center_x", 0), 
-                    entry.get("center_y", 0)
-                ),
+                "pos": pygame.math.Vector2(entry.get("center_x", 0), entry.get("center_y", 0)),
                 "radius": entry.get("radius", 1000),
                 "count": entry.get("count", 20)
             }
             self.pola_asteroid.append(aster_zone)
-        # self.WORLD_RADIUS = data["level_1"]["world_config"]["word_radius"]
         self.FADE_ZONE = 2000
-        self.dist = 0  # Dystans gracza od środka świata
-        
-        # --- Inicjalizacja Systemów ---
+        self.dist = 0
+
         self.shoot_obj = shoot.Shoot(gfx_40)
         self.camera = Camera(self.cxx, self.cyy, lerp_factor=0.08, offset_scalar=15)
         self.player_parameters = space_ship.Parameters(gfx_40)
-        
-        # --- Gracz ---
+
         self.player = space_ship.SpaceShip(
             gfx_40, audio_files, self.cxx, self.cyy, [0, 0], 
             self.music_obj, self.shoot_obj, self.player_parameters
@@ -78,15 +57,13 @@ class Game:
             self.music_obj, self.shoot_obj, self.player_parameters
         )
 
-        # --- Zarządzanie Obiektami ---
-        
         self.asteroid_manager = AsteroidManager(gfx_100, self.pola_asteroid, self.WORLD_RADIUS)
+
         self.enemy_manager = EnemyManager(
             gfx_40, self.player, self.music_obj, 5, 
             self.shoot_obj, self.WORLD_RADIUS, self.asteroid_manager
         )
 
-        # --- UI i Systemy Pomocnicze ---
         self.colision_obj = collisions.Collision(self.music_obj, self.cxx, self.cyy, self.enemy_manager, self.WORLD_RADIUS)
         self.radar_obj = radar.Radar(self.cxx, self.cyy, 200, self.WORLD_RADIUS)
         self.level_manager = level_manager.LevelManager(self.enemy_manager)
@@ -96,11 +73,8 @@ class Game:
             self.cxx, self.cyy, gfx_100, self.clock, 
             self.level_manager, self.colision_obj, self.enemy_manager, self.player_parameters
         )
-        
-        # Inicjalizacja dodatkowych ustawień UI
         self.level_manager.init_additional_settings(self.game_controller.ui)
         
-        # Stan gry
         self.paused = False
 
     def pause_or_resume(self):
