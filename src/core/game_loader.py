@@ -79,46 +79,79 @@ class Game:
     def pause_or_resume(self):
         """Przełącza stan pauzy."""
         self.paused = not self.paused
+        
+    def reset_to_level_one(self):
+        """Kompletny reset stanu gry."""
+        # 1. Reset parametrów fizycznych statku
+        self.player.hp = self.player_parameters.max_hp
+        self.player.is_destroyed = False
+        self.player.player_pos = pygame.math.Vector2(0, 0)
+        self.player.velocity = pygame.math.Vector2(0, 0)
+        
+        # 2. Reset UI (ukrycie ekranu śmierci i wyczyszczenie pasków)
+        self.game_controller.ui.is_game_over = False
+        self.game_controller.ui.game_over_comp.alpha = 0
+        self.game_controller.ui.stats.displayed_hp = self.player.hp
+        self.game_controller.ui.stats.displayed_xp = 0
+        self.game_controller.ui.player_can_manevre = True # Odblokowanie sterowania
+        
+        self.game_controller.ui.game_over_delay_timer = 0
+        self.game_controller.ui.is_game_over = False
+        
+        # 3. Reset Managera Poziomów i pobranie danych startowych
+        return self.level_manager.reset_to_start()
 
     def mainloop(self, dt: float):
-        """Aktualizacja logiki gry."""
         if self.paused:
             return
+        
+        # Pobieramy sygnał z UI (klawisz R lub przycisk myszy)
+        controller_status = self.game_controller.update(dt)
+        
+        data_to_load = None
+        
+        if controller_status == "RESTART":
+            # Wywołujemy nasz nowy reset i przechwytujemy dane poziomu 1
+            data_to_load = self.reset_to_level_one()
+        else:
+            # Standardowe sprawdzenie czy wbito nowy poziom
+            data_to_load = self.level_manager.update(dt)
 
-        # 1. Update managerów i obiektów
-        ret = self.level_manager.update(dt)
-        if ret is not None:
-            self.WORLD_RADIUS = ret[0]
+        # Jeśli data_to_load nie jest None (czyli był restart ALBO nowy poziom)
+        if data_to_load is not None:
+            self.WORLD_RADIUS = data_to_load[0]
             self.player.reinit_pos()
-            self.asteroid_manager.reinit_asteroid_data(ret[1], self.WORLD_RADIUS)
+            self.asteroid_manager.reinit_asteroid_data(data_to_load[1], self.WORLD_RADIUS)
             self.radar_obj.world_radius = self.WORLD_RADIUS
             self.colision_obj.reload_world_radius(self.WORLD_RADIUS)
             self.shoot_obj.shots = []
-            
-        self.game_controller.update(dt)
+            # Opcjonalnie: self.enemy_manager.enemies = [] 
+            # (load_new_level już wywołuje end_level(), więc powinno być czysto)
+
+        # --- Reszta update'ów (fizyka, kolizje itd.) ---
         self.player.update(dt)
         self.player_shoot.update(dt, self.enemy_manager)
         self.enemy_manager.update(dt)
         self.asteroid_manager.update(dt, self.player, self.enemy_manager)
         self.shoot_obj.update(self.enemy_manager, self.music_obj)
         
-        # 2. Fizyka bariery świata
+        # 3. Fizyka bariery świata
         self.dist = self.player.player_pos.distance_to(self.WORLD_CENTER)
         if self.dist > self.WORLD_RADIUS:
             # Odbicie i powrót do granicy
             self.player.player_pos = self.WORLD_CENTER + (self.player.player_pos - self.WORLD_CENTER).normalize() * self.WORLD_RADIUS
             self.player.velocity *= -0.3
-            self.player.destroy_cause_collision()
+            self.player.hp = 0 # Kara za uderzenie w barierę
 
-        # 3. Kolizje
+        # 4. Kolizje
         self.colision_obj.check_collisions(
             self.player_shoot, self.player, self.enemy_manager, 
             self.shoot_obj, self.asteroid_manager, self.level_manager
         )
         
-        # 4. Kamera
+        # 5. Kamera
         self.camera.update(self.player.player_pos, self.player.velocity)
-
+        
     def draw(self, window: pygame.Surface, dt: float):
         """Renderowanie wszystkich elementów gry na podaną powierzchnię."""
         

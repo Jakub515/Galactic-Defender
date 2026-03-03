@@ -15,6 +15,12 @@ class LevelManager():
 
         self.json_config = self._load_json()
         self.load_new_level(self.level)
+        
+    # W klasie LevelManager dodaj tę krótką metodę:
+    def reset_to_start(self):
+        self.level = 1
+        self.xp = 0
+        return self.load_new_level(1)
 
     def init_additional_settings(self, ui: "UI"):
         self.ui = ui
