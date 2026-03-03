@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from jednostki.enemy_ship.enemy_manager import EnemyManager
+    from utils.music import MusicManager
 
 class Shoot():
     def __init__(self, images: dict):
@@ -27,12 +28,16 @@ class Shoot():
             
         self.shots.append(data)
 
-    def update(self, enemy_manager: "EnemyManager"):
+    def update(self, enemy_manager: "EnemyManager", music_manager: "MusicManager"):
         current_time = time.time()
         
         for shot in self.shots[:]:
             # --- 1. OBSŁUGA EKSPLOZJI ---
             if shot["is_exploding"]:
+                if not shot.get("is_exploding_music_done", False):
+                    shot["is_exploding_music_done"] = True
+                    music_manager.play("./data/images/audio/z_opengameart/explosions/explode.mp3", 0.2)
+                    
                 shot["frame_index"] += 0.5
                 if shot["frame_index"] >= len(self.explosion_frames):
                     if shot in self.shots:

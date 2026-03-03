@@ -238,7 +238,7 @@ class Enemy:
             })
         if self.music_obj:
             if is_rocket:
-                self.music_obj.play("./data/images/audio/sfx_laser1.wav", 0.25)
+                self.music_obj.play("./data/images/audio/z_opengameart/launches/flaunch.mp3", 0.15)
             else:
                 self.music_obj.play("./data/images/audio/sfx_laser1.wav", 0.25, sound_is_laser=True)
 

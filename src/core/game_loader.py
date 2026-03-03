@@ -1,6 +1,5 @@
 import pygame
 import json
-import time  # Dodajemy moduł czasu
 
 # Importy modułów
 import jednostki.space_ship as space_ship
@@ -94,13 +93,14 @@ class Game:
             self.asteroid_manager.reinit_asteroid_data(ret[1], self.WORLD_RADIUS)
             self.radar_obj.world_radius = self.WORLD_RADIUS
             self.colision_obj.reload_world_radius(self.WORLD_RADIUS)
+            self.shoot_obj.shots = []
             
         self.game_controller.update(dt)
         self.player.update(dt)
         self.player_shoot.update(dt, self.enemy_manager)
         self.enemy_manager.update(dt)
         self.asteroid_manager.update(dt, self.player, self.enemy_manager)
-        self.shoot_obj.update(self.enemy_manager)
+        self.shoot_obj.update(self.enemy_manager, self.music_obj)
         
         # 2. Fizyka bariery świata
         self.dist = self.player.player_pos.distance_to(self.WORLD_CENTER)

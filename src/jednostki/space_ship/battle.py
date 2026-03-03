@@ -120,7 +120,7 @@ class Battle():
                 "time-alive-all": w_data[6],
                 "steer-limit": w_data[7]
             })
-            self.music_obj.play("./data/images/audio/sfx_laser1.wav", 0.7, sound_is_laser=False)
+            self.music_obj.play("./data/images/audio/z_opengameart/launches/iceball.mp3", 0.3, sound_is_laser=False)
         self.shoot_obj.create_missle(shot_data)
             
 

@@ -17,8 +17,8 @@ class MusicManager():
                 self.sounds[path] = pygame.mixer.Sound(path)
 
         # Muzyka tła
-        if os.path.exists("./data/images/audio/star_wars.mp3"):
-            pygame.mixer.music.load("./data/images/audio/star_wars.mp3")
+        if os.path.exists("./data/images/audio/z_opengameart/WAV/Venus.mp3"):
+            pygame.mixer.music.load("./data/images/audio/z_opengameart/WAV/Venus.mp3")
             pygame.mixer.music.set_volume(0.2)
             pygame.mixer.music.play(-1)
 
