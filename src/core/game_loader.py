@@ -183,5 +183,5 @@ class Game:
 
         # --- 4. Interfejs (na sztywno do współrzędnych ekranu) ---
         self.radar_obj.draw(window, self.player, self.enemy_manager, self.asteroid_manager, dt, self.player_shoot)
-        self.game_controller.draw(window, self.camera)
+        self.game_controller.draw(window, self.camera, dt)
         

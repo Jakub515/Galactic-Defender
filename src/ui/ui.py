@@ -261,45 +261,85 @@ class RewardComponent:
             hint.set_alpha(self.alpha)
             window.blit(hint, hint.get_rect(center=(rect.centerx, rect.centery + 30)))
             
+import pygame
+import math
+import random
+
 class GameOverComponent:
-    """Obsługuje wyświetlanie ekranu porażki i przycisku restartu."""
+    """Ultra-płynny ekran porażki z efektami post-procesingu."""
     def __init__(self, font_big, font_small, screen_w, screen_h):
         self.font_big = font_big
         self.font_small = font_small
         self.cxx, self.cyy = screen_w, screen_h
-        self.restart_rect = pygame.Rect(screen_w // 2 - 100, screen_h // 2 + 60, 200, 50)
+        self.restart_rect = pygame.Rect(screen_w // 2 - 125, screen_h // 2 + 70, 250, 60)
         self.alpha = 0
+        self.timer = 0.0
+        
+        # Przygotowanie powierzchni dla efektu scanlines (raz, dla wydajności)
+        self.scanline_surf = pygame.Surface((screen_w, screen_h), pygame.SRCALPHA)
+        for y in range(0, screen_h, 3):
+            pygame.draw.line(self.scanline_surf, (0, 0, 0, 40), (0, y), (screen_w, y))
 
-    def draw(self, window, dt):
-        # Animacja pojawiania się
+    def draw(self, window, dt, mouse_pos):
+        self.timer += dt
+        
+        # Płynne, nieliniowe pojawianie się (Ease Out)
         if self.alpha < 255:
-            self.alpha = min(255, self.alpha + 5)
+            self.alpha = min(255, self.alpha + 200 * dt)
 
-        # Przyciemnienie ekranu
-        overlay = pygame.Surface((self.cxx, self.cyy), pygame.SRCALPHA)
-        overlay.fill((20, 0, 0, int(self.alpha * 0.8)))
-        window.blit(overlay, (0, 0))
+        # Losowe "szarpnięcia" tekstu (glitch co kilka sekund)
+        glitch_x = random.uniform(-4, 4) if random.random() < 0.05 else 0
+        
+        # Efekt rozszczepienia (Czerwony i Niebieski kanał)
+        for offset, col in [(2, (255, 0, 0)), (-2, (0, 150, 255)), (0, (255, 255, 255))]:
+            txt = "STATEK ZOSTAŁ ZDEZINTEGROWANY" if col == (255, 255, 255) else "KRYTYCZNA AWARIA SYSTEMU"
+            surf = self.font_big.render(txt, True, col)
+            
+            # Główny tekst biały, reszta to "duchy" o niższym alpha
+            current_alpha = self.alpha if col == (255, 255, 255) else int(self.alpha * 0.4)
+            surf.set_alpha(current_alpha)
+            
+            # Animacja pływania dla efektów barwnych
+            pos_x = self.cxx // 2 + offset * math.sin(self.timer * 5) + glitch_x
+            pos_y = self.cyy // 2 - 50
+            window.blit(surf, surf.get_rect(center=(pos_x, pos_y)))
 
-        # Tekst główny
-        title = self.font_big.render("STATEK ZOSTAŁ ZDEZINTEGROWANY", True, (255, 50, 50))
-        title.set_alpha(self.alpha)
-        window.blit(title, title.get_rect(center=(self.cxx // 2, self.cyy // 2 - 40)))
-
-        # Przycisk Restartu
-        mouse_pos = pygame.mouse.get_pos()
+        # 3. INTERAKTYWNY PRZYCISK Z EFEKTEM BLOOM
         is_hover = self.restart_rect.collidepoint(mouse_pos)
         
-        btn_col = (60, 60, 80) if not is_hover else (100, 30, 30)
-        pygame.draw.rect(window, btn_col, self.restart_rect, border_radius=10)
-        pygame.draw.rect(window, (255, 255, 255), self.restart_rect, 2, border_radius=10)
-
-        btn_txt = self.font_small.render("RESTART (LVL 1)", True, (255, 255, 255))
-        window.blit(btn_txt, btn_txt.get_rect(center=self.restart_rect.center))
+        # Płynna zmiana rozmiaru (Lerp-like)
+        s_target = 1.1 if is_hover else 1.0
+        s_val = s_target + math.sin(self.timer * 6) * 0.02 # Delikatne pulsowanie
         
-        hint = self.font_small.render("Naciśnij [R] aby spróbować ponownie", True, (150, 150, 150))
-        window.blit(hint, hint.get_rect(center=(self.cxx // 2, self.cyy // 2 + 140)))
+        draw_w = int(self.restart_rect.width * s_val)
+        draw_h = int(self.restart_rect.height * s_val)
+        draw_rect = pygame.Rect(0, 0, draw_w, draw_h)
+        draw_rect.center = self.restart_rect.center
 
+        # Poświata przycisku (Bloom)
+        if is_hover:
+            glow_surf = pygame.Surface((draw_w + 20, draw_h + 20), pygame.SRCALPHA)
+            pygame.draw.rect(glow_surf, (200, 0, 0, 50), (0, 0, draw_w + 20, draw_h + 20), border_radius=15)
+            window.blit(glow_surf, glow_surf.get_rect(center=draw_rect.center))
 
+        # Renderowanie przycisku
+        btn_col = (130, 20, 20) if is_hover else (30, 30, 40)
+        pygame.draw.rect(window, btn_col, draw_rect, border_radius=12)
+        pygame.draw.rect(window, (255, 255, 255) if is_hover else (100, 100, 120), draw_rect, 2, border_radius=12)
+
+        # Tekst przycisku z efektem "skanowania"
+        btn_txt = self.font_small.render("RESTART", True, (255, 255, 255))
+        txt_alpha = int(200 + 55 * math.sin(self.timer * 12)) if is_hover else 255
+        btn_txt.set_alpha(min(self.alpha, txt_alpha))
+        window.blit(btn_txt, btn_txt.get_rect(center=draw_rect.center))
+
+        # 4. DODATKI KOŃCOWE (SCANLINES I NOISE)
+        window.blit(self.scanline_surf, (0, 0))
+        
+        # Podpowiedź na dole
+        hint = self.font_small.render("SYSTEM GOTOWY - NACIŚNIJ [R] LUB KLIKNIJ", True, (120, 120, 130))
+        hint.set_alpha(int(abs(math.sin(self.timer * 2)) * self.alpha)) # Powolne pulsowanie
+        window.blit(hint, hint.get_rect(center=(self.cxx // 2, self.cyy // 2 + 160)))
 # --- GŁÓWNE KLASY STERUJĄCE ---
 
 class GameController:
@@ -307,7 +347,7 @@ class GameController:
         self.ui = UI(event_obj, cxx, cyy, loaded_images, battle, player, level_manager, enemy_manager, param)
         self.input_handler = InputHandler(event_obj, player, battle, self.ui, collision, enemy_manager)
         self.clock = clock
-        
+        self.event_obj = event_obj
     def update(self, dt: float):
         # Musimy przypisać wynik do zmiennej i go zwrócić!
         result = self.input_handler.update()
@@ -315,8 +355,8 @@ class GameController:
         
         return result # To pozwoli głównej pętli gry zareagować na "RESTART"
 
-    def draw(self, window: pygame.Surface, camera):
-        self.ui.draw(window, camera)
+    def draw(self, window: pygame.Surface, camera, dt):
+        self.ui.draw(window, camera, (self.event_obj.mouse_x, self.event_obj.mouse_y), dt)
 
 
 class InputHandler:
@@ -328,13 +368,21 @@ class InputHandler:
         self.ctrl_pressed_last_frame = False
     
     def update(self):
+        # Pobieramy aktualny stan myszy bezpośrednio z pygame dla pewności
+        mouse_press = self.event_obj.click_left
+        mouse_pos = (self.event_obj.mouse_x, self.event_obj.mouse_y)
+
         if self.ui_obj.is_game_over:
+            # 1. Sprawdzenie klawisza R
             if self.event_obj.key_r:
                 return "RESTART"
-            # Sprawdzenie myszki (jeśli Twoje event_obj obsługuje kliknięcia)
-            if hasattr(self.event_obj, 'mouse_click') and self.event_obj.click_left:
-                if self.ui_obj.game_over_comp.restart_rect.collidepoint([self.event_obj.mouse_x,self.event_obj.mouse_y]):
+            
+            # 2. Sprawdzenie kliknięcia myszką w przycisk
+            if mouse_press: # Lewy przycisk myszy
+                if self.ui_obj.game_over_comp.restart_rect.collidepoint(mouse_pos):
+                    # Opcjonalnie: mały delay lub dźwięk przed restartem
                     return "RESTART"
+            
             return None
         
         self.ui_obj.reward_1_choosed = self.event_obj.key_o
@@ -431,10 +479,10 @@ class UI:
         if self.rewards.alpha <= 0 and self.rewards.is_closing:
             self._actually_close_rewards()
 
-    def draw(self, window, camera):
+    def draw(self, window, camera, mouse_pos, dt):
         # Jeśli flaga is_game_over jest True, rysujemy tylko ekran końcowy
         if self.is_game_over:
-            self.game_over_comp.draw(window, 0)
+            self.game_over_comp.draw(window, dt, mouse_pos)
             return
 
         # Jeśli statek jest zniszczony, ale czekamy na delay (is_game_over jeszcze False)
