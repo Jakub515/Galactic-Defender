@@ -260,13 +260,12 @@ class RewardComponent:
             hint = self.font.render(f"Naciśnij [{'O' if i==0 else 'P'}] aby wybrać", True, (0, 200, 255))
             hint.set_alpha(self.alpha)
             window.blit(hint, hint.get_rect(center=(rect.centerx, rect.centery + 30)))
-            
 import pygame
 import math
 import random
 
 class GameOverComponent:
-    """Ultra-płynny ekran porażki z efektami post-procesingu."""
+    """Ultra-płynny ekran porażki z efektami post-procesingu i inteligentnym losowaniem tekstów."""
     def __init__(self, font_big, font_small, screen_w, screen_h):
         self.font_big = font_big
         self.font_small = font_small
@@ -274,7 +273,19 @@ class GameOverComponent:
         self.restart_rect = pygame.Rect(screen_w // 2 - 125, screen_h // 2 + 70, 250, 60)
         self.alpha = 0
         self.timer = 0.0
+        self.text_actual = None
         
+        # Pula tekstów zapobiegająca powtórzeniom i statystycznemu pechowi
+        self.all_possible_texts = [
+            "STATEK ZOSTAŁ ZDEZINTEGROWANY",
+            "TRANSFORMACJA W ZŁOM ZAKOŃCZONA",
+            "GRATULACJE! JESTEŚ TERAZ ODPADEM GALAKTYCZNYM",
+            "WIEMY ŻE TO NIE TWOJA WINA. TO PRZEZ LAGI",
+            "MISJA ZAKOŃCZONA... PO PROSTU NIE TAK, JAK PLANOWAŁEŚ",
+            "TWOJE OSTATNIE SŁOWA ZOSTAŁY ZARCHIWIZOWANE JAKO: 'UPS'."
+        ]
+        self.text_pool = []
+
         # Przygotowanie powierzchni dla efektu scanlines (raz, dla wydajności)
         self.scanline_surf = pygame.Surface((screen_w, screen_h), pygame.SRCALPHA)
         for y in range(0, screen_h, 3):
@@ -283,33 +294,41 @@ class GameOverComponent:
     def draw(self, window, dt, mouse_pos):
         self.timer += dt
         
-        # Płynne, nieliniowe pojawianie się (Ease Out)
+        # 1. LOGIKA POJAWIANIA SIĘ I WYBORU TEKSTU
         if self.alpha < 255:
             self.alpha = min(255, self.alpha + 200 * dt)
 
-        # Losowe "szarpnięcia" tekstu (glitch co kilka sekund)
+        if self.text_actual is None:
+            # Jeśli pula jest pusta, odświeżamy ją i mieszamy
+            if not self.text_pool:
+                self.text_pool = self.all_possible_texts.copy()
+                random.shuffle(self.text_pool)
+            
+            # Pobieramy następny unikalny tekst z puli
+            self.text_actual = self.text_pool.pop()
+
+        # 2. EFEKT GLITCH I CHROMATIC ABERRATION
         glitch_x = random.uniform(-4, 4) if random.random() < 0.05 else 0
         
-        # Efekt rozszczepienia (Czerwony i Niebieski kanał)
+        # Rysujemy 3 warstwy tekstu dla efektu rozszczepienia kolorów
         for offset, col in [(2, (255, 0, 0)), (-2, (0, 150, 255)), (0, (255, 255, 255))]:
-            txt = "STATEK ZOSTAŁ ZDEZINTEGROWANY" if col == (255, 255, 255) else "KRYTYCZNA AWARIA SYSTEMU"
-            surf = self.font_big.render(txt, True, col)
+            surf = self.font_big.render(self.text_actual, True, col)
             
-            # Główny tekst biały, reszta to "duchy" o niższym alpha
+            # Główny tekst biały, warstwy kolorowe są bardziej przezroczyste
             current_alpha = self.alpha if col == (255, 255, 255) else int(self.alpha * 0.4)
             surf.set_alpha(current_alpha)
             
-            # Animacja pływania dla efektów barwnych
+            # Animacja pływania (sinus) + przesunięcie kolorów (offset) + glitch
             pos_x = self.cxx // 2 + offset * math.sin(self.timer * 5) + glitch_x
             pos_y = self.cyy // 2 - 50
             window.blit(surf, surf.get_rect(center=(pos_x, pos_y)))
 
-        # 3. INTERAKTYWNY PRZYCISK Z EFEKTEM BLOOM
+        # 3. INTERAKTYWNY PRZYCISK RESTART
         is_hover = self.restart_rect.collidepoint(mouse_pos)
         
-        # Płynna zmiana rozmiaru (Lerp-like)
+        # Animacja skali przycisku
         s_target = 1.1 if is_hover else 1.0
-        s_val = s_target + math.sin(self.timer * 6) * 0.02 # Delikatne pulsowanie
+        s_val = s_target + math.sin(self.timer * 6) * 0.02 # Pulsowanie
         
         draw_w = int(self.restart_rect.width * s_val)
         draw_h = int(self.restart_rect.height * s_val)
@@ -322,25 +341,24 @@ class GameOverComponent:
             pygame.draw.rect(glow_surf, (200, 0, 0, 50), (0, 0, draw_w + 20, draw_h + 20), border_radius=15)
             window.blit(glow_surf, glow_surf.get_rect(center=draw_rect.center))
 
-        # Renderowanie przycisku
+        # Tło i ramka przycisku
         btn_col = (130, 20, 20) if is_hover else (30, 30, 40)
         pygame.draw.rect(window, btn_col, draw_rect, border_radius=12)
         pygame.draw.rect(window, (255, 255, 255) if is_hover else (100, 100, 120), draw_rect, 2, border_radius=12)
 
-        # Tekst przycisku z efektem "skanowania"
+        # Tekst na przycisku
         btn_txt = self.font_small.render("RESTART", True, (255, 255, 255))
         txt_alpha = int(200 + 55 * math.sin(self.timer * 12)) if is_hover else 255
         btn_txt.set_alpha(min(self.alpha, txt_alpha))
         window.blit(btn_txt, btn_txt.get_rect(center=draw_rect.center))
 
-        # 4. DODATKI KOŃCOWE (SCANLINES I NOISE)
+        # 4. POST-PROCESSING (SCANLINES)
         window.blit(self.scanline_surf, (0, 0))
         
-        # Podpowiedź na dole
+        # Podpowiedź na samym dole
         hint = self.font_small.render("SYSTEM GOTOWY - NACIŚNIJ [R] LUB KLIKNIJ", True, (120, 120, 130))
-        hint.set_alpha(int(abs(math.sin(self.timer * 2)) * self.alpha)) # Powolne pulsowanie
+        hint.set_alpha(int(abs(math.sin(self.timer * 2)) * self.alpha)) 
         window.blit(hint, hint.get_rect(center=(self.cxx // 2, self.cyy // 2 + 160)))
-# --- GŁÓWNE KLASY STERUJĄCE ---
 
 class GameController:
     def __init__(self, battle: "Battle", event_obj: "Event", player: "SpaceShip", cxx: int, cyy: int, loaded_images: dict, clock: pygame.time.Clock, level_manager: "LevelManager", collision: "Collision", enemy_manager: "EnemyManager", param: "Parameters"):
@@ -375,12 +393,14 @@ class InputHandler:
         if self.ui_obj.is_game_over:
             # 1. Sprawdzenie klawisza R
             if self.event_obj.key_r:
+                self.ui_obj.game_over_comp.text_actual = None
                 return "RESTART"
             
             # 2. Sprawdzenie kliknięcia myszką w przycisk
             if mouse_press: # Lewy przycisk myszy
                 if self.ui_obj.game_over_comp.restart_rect.collidepoint(mouse_pos):
                     # Opcjonalnie: mały delay lub dźwięk przed restartem
+                    self.ui_obj.game_over_comp.text_actual = None
                     return "RESTART"
             
             return None
