@@ -22,28 +22,61 @@ class LoadingScreen:
         self.font_large = pygame.font.SysFont("Arial", 48, bold=True)
         self.font_small = pygame.font.SysFont("Arial", 20)
 
-    def draw(self, window: pygame.Surface, status_text: str):
-        """Renderuje wizualną część ładowania."""
+        # Parametry animacji paska
+        self.display_progress = 0.0  # To co widzi gracz (0.0 do 1.0)
+        self.target_fake_max = 0.92  # Do ilu % pasek ma "pełznąć" czekając na wątek
+        self.bar_width = 500         # Dłuższy pasek
+
+    def reset(self):
+        """Resetuje stan paska przed nowym ładowaniem."""
+        self.display_progress = 0.0
+
+    def draw(self, window: pygame.Surface, status_text: str, is_actually_done: bool):
+        """
+        Renderuje wizualną część ładowania.
+        is_actually_done: informacja czy wątek w tle skończył pracę.
+        """
         window.fill((5, 5, 15)) # Bardzo ciemny granatowy
         
-        # Tekst główny "LOADING"
-        load_surf = self.font_large.render("LOADING", True, (255, 255, 255))
-        load_rect = load_surf.get_rect(center=(self.cxx // 2, self.cyy // 2 - 40))
+        # --- LOGIKA POSTĘPU ---
+        if not is_actually_done:
+            # Pasek dąży do target_fake_max, ale zwalnia (progres logarytmiczny)
+            diff = self.target_fake_max - self.display_progress
+            self.display_progress += diff * 0.015  # Prędkość pełzania
+        else:
+            # Gwałtowny finisz po zakończeniu ładowania danych
+            self.display_progress += (1.05 - self.display_progress) * 0.1
+            if self.display_progress > 1.0: 
+                self.display_progress = 1.0
+
+        # --- RENDERING ---
+        # Tekst główny
+        load_surf = self.font_large.render("SYSTEM INITIALIZATION", True, (255, 255, 255))
+        load_rect = load_surf.get_rect(center=(self.cxx // 2, self.cyy // 2 - 50))
         
-        # Tekst statusu (dynamiczny)
+        # Tekst statusu
         status_surf = self.font_small.render(status_text, True, (100, 150, 255))
-        status_rect = status_surf.get_rect(center=(self.cxx // 2, self.cyy // 2 + 20))
+        status_rect = status_surf.get_rect(center=(self.cxx // 2, self.cyy // 2 + 30))
         
-        # Animacja paska (suwak)
-        bar_width = 300
-        progress = (pygame.time.get_ticks() / 1000) % 1.0 
+        # Rysowanie paska (Tło)
+        bx = self.cxx // 2 - self.bar_width // 2
+        by = self.cyy // 2 + 70
+        bh = 10
+        pygame.draw.rect(window, (20, 20, 40), (bx - 4, by - 4, self.bar_width + 8, bh + 8), 2) # Ramka
+        pygame.draw.rect(window, (30, 30, 50), (bx, by, self.bar_width, bh)) # Tło paska
         
-        # Tło paska
-        pygame.draw.rect(window, (30, 30, 50), (self.cxx//2 - bar_width//2, self.cyy//2 + 50, bar_width, 4))
-        # Aktywny segment
-        active_w = 60
-        pos_x = (self.cxx//2 - bar_width//2) + (bar_width - active_w) * progress
-        pygame.draw.rect(window, (0, 200, 255), (pos_x, self.cyy//2 + 50, active_w, 4))
+        # Rysowanie paska (Wypełnienie)
+        current_w = int(self.bar_width * self.display_progress)
+        if current_w > 0:
+            # Główny kolor
+            pygame.draw.rect(window, (0, 180, 255), (bx, by, current_w, bh))
+            # Animowany "odblask" na czole paska
+            glow_w = min(20, current_w)
+            pygame.draw.rect(window, (180, 240, 255), (bx + current_w - glow_w, by, glow_w, bh))
+
+        # Procenty
+        perc_surf = self.font_small.render(f"{int(self.display_progress * 100)}%", True, (255, 255, 255))
+        window.blit(perc_surf, (bx + self.bar_width + 15, by - 5))
 
         window.blit(load_surf, load_rect)
         window.blit(status_surf, status_rect)
@@ -73,7 +106,16 @@ class Game:
         self.last_f5_state = False
 
         # Start pierwszego ładowania
-        self.loader.start_async_load(self.initial_load_task, status_text="BOOTING SYSTEM...")
+        self.start_loading(self.initial_load_task, "BOOTING SYSTEM...")
+
+    def start_loading(self, task, status_text, *args):
+        """
+        Pomocnicza metoda do resetu paska i startu wątku.
+        *args pozwala przekazać dowolną liczbę argumentów do zadania (task).
+        """
+        self.loading_screen.reset()
+        # Przekazujemy args bezpośrednio do managera
+        self.loader.start_async_load(task, *args, status_text=status_text)
 
     # --- ZADANIA DLA WĄTKÓW ---
 
@@ -97,11 +139,11 @@ class Game:
         self.player = space_ship.SpaceShip(self.gfx_40, self.audio_files, self.cxx, self.cyy, [0, 0], 
                                           self.music_obj, self.shoot_obj, self.player_parameters)
         self.player_shoot = space_ship.Battle(self.player, self.gfx_40, self.audio_files, self.cxx, self.cyy, [0, 0], 
-                                             self.music_obj, self.shoot_obj, self.player_parameters)
+                                              self.music_obj, self.shoot_obj, self.player_parameters)
 
         self.asteroid_manager = AsteroidManager(self.gfx_100, self.pola_asteroid, self.WORLD_RADIUS)
         self.enemy_manager = EnemyManager(self.gfx_40, self.player, self.music_obj, 5, 
-                                         self.shoot_obj, self.WORLD_RADIUS, self.asteroid_manager)
+                                          self.shoot_obj, self.WORLD_RADIUS, self.asteroid_manager)
 
         self.colision_obj = collisions.Collision(self.music_obj, self.cxx, self.cyy, self.enemy_manager, self.WORLD_RADIUS)
         self.radar_obj = radar.Radar(self.cxx, self.cyy, 200, self.WORLD_RADIUS)
@@ -115,12 +157,10 @@ class Game:
         self.loader.loading_queue.put("DONE")
 
     def reset_task(self):
-        """Zadanie wywoływane przy restarcie (F5 lub UI)."""
         data = self.reset_logic()
         self.level_load_task(data)
 
     def level_load_task(self, data_to_load):
-        """Zadanie zmiany/przeładowania poziomu."""
         self.WORLD_RADIUS = data_to_load[0]
         self.player.reinit_pos()
         self.asteroid_manager.reinit_asteroid_data(data_to_load[1], self.WORLD_RADIUS)
@@ -130,7 +170,6 @@ class Game:
         self.loader.loading_queue.put("DONE")
 
     def reset_logic(self):
-        """Przygotowanie danych do restartu."""
         self.player.hp = self.player_parameters.max_hp
         self.player.is_destroyed = False
         self.player.player_pos *= 0
@@ -148,30 +187,35 @@ class Game:
     # --- PĘTLA GŁÓWNA ---
 
     def mainloop(self, dt: float):
+        # Sprawdzanie statusu wątku ładowania
         if self.loader.is_loading:
-            if self.loader.check_finished():
-                self.was_updated_initially = True
-            if not self.was_updated_initially:
-                return 
+            self.loader.check_finished()
+        
+        # Jeśli pasek jeszcze nie dojechał do 100%, blokujemy logikę gry
+        if self.loading_screen.display_progress < 1.0:
+            return 
+        
+        # Flaga aktywująca grę po pierwszym pełnym naładowaniu
+        self.was_updated_initially = True
         
         if self.paused: return
         
         # Status z UI (przycisk Restart)
         status = self.game_controller.update(dt)
         if status == "RESTART":
-            self.loader.start_async_load(self.reset_task, status_text="RESTARTING SECTOR...")
+            self.start_loading(self.reset_task, "RESTARTING SECTOR...")
             return 
             
         # Logika poziomów (przejście dalej)
         lvl_data = self.level_manager.update(dt)
         if lvl_data is not None:
-            self.loader.start_async_load(self.level_load_task, lvl_data, flag_load_level_f5=False, status_text="LOADING NEXT LEVEL...")
+            self.start_loading(self.level_load_task, "LOADING NEXT LEVEL...", lvl_data)
             return
         
         # Obsługa klawisza F5
         if self.events_obj.key_f5 and not self.last_f5_state:
             if not self.loader.is_loading:
-                self.loader.start_async_load(self.reset_task, status_text="REBOOTING...")
+                self.start_loading(self.reset_task, "REBOOTING...")
         self.last_f5_state = self.events_obj.key_f5
 
         # Update systemów gry
@@ -189,13 +233,14 @@ class Game:
             self.player.hp = 0 
 
         self.colision_obj.check_collisions(self.player_shoot, self.player, self.enemy_manager, 
-                                         self.shoot_obj, self.asteroid_manager, self.level_manager)
+                                          self.shoot_obj, self.asteroid_manager, self.level_manager)
         self.camera.update(self.player.player_pos, self.player.velocity)
 
     def draw(self, window: pygame.Surface, dt: float):
-        # Renderowanie ekranu ładowania
-        if self.loader.is_loading:
-            self.loading_screen.draw(window, self.loader.loading_status)
+        # Jeśli pasek postępu nie skończył animacji, rysuj ekran ładowania
+        if self.loading_screen.display_progress < 1.0:
+            # Przekazujemy czy wątek tła już skończył (is_loading == False)
+            self.loading_screen.draw(window, self.loader.loading_status, not self.loader.is_loading)
             return  
         
         if not self.was_updated_initially: 
