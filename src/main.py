@@ -7,7 +7,13 @@ from core.game_manager import Game
 
 # A. Inicjalizacja
 pygame.init()
-window = pygame.display.set_mode((1920, 1080), pygame.FULLSCREEN)
+
+info = pygame.display.Info()
+
+width = info.current_w
+height = info.current_h
+
+window = pygame.display.set_mode((width, height), pygame.FULLSCREEN)
 cxx, cyy = window.get_size()
 clock = pygame.time.Clock()
 
