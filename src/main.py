@@ -3,7 +3,7 @@ import utils.load_images as load_images
 import utils.music as music
 import core.event as event
 import core.sky as sky
-from core.game_manager import Game
+from core.game_manager import Game  
 
 # A. Inicjalizacja
 pygame.init()

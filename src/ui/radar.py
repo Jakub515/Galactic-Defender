@@ -16,7 +16,9 @@ class Radar:
         self.bg_color = (0, 0, 0, 150)        # Półprzezroczyste czarne tło
         self.player_color = (50, 255, 50)     # Zielony punkt gracza
         self.enemy_color = (255, 50, 50)      # Czerwone punkty wrogów
-        self.asteroid_color = (140, 140, 140) # Szare punkty asteroid
+        self.asteroid_color_small = (140, 140, 140) # Szare punkty asteroid
+        self.asteroid_color_med = (25,25,200)
+        self.asteroid_color_big = (250,165,10)
         
         # Marginesy i pozycja (Prawy dolny róg)
         self.margin = 20
@@ -73,14 +75,34 @@ class Radar:
                            int(world_radar_radius), 2)
 
         # --- ASTEROIDY (NOWA SEKCJA) ---
+        # --- ASTEROIDY (Z WYRAŹNIEJSZYM SKALOWANIEM) ---
+        # --- ASTEROIDY (POPRAWIONE KOLORY I ROZMIARY) ---
         for asteroid in asteroid_manager.asteroids:
             rel_pos = asteroid.pos - player.player_pos
-            # Wyświetlamy tylko obiekty w zasięgu zoomu radaru
-            if rel_pos.length() < self.zoom_radius:
+            dist_sq = rel_pos.length_squared()
+            
+            if dist_sq < (self.zoom_radius + asteroid.radius)**2:
                 radar_pos = center + rel_pos * self.scale
-                # Rysujemy małe kropki dla asteroid
-                pygame.draw.circle(temp_radar, self.asteroid_color, (int(radar_pos.x), int(radar_pos.y)), 2)
-
+                
+                # Używamy progów opartych na skalowaniu z AsteroidManager
+                # Meteory: r=30, Planety: r=75, Space: r=125
+                if asteroid.radius <= 40:      # Meteory (60px / 2 = 30)
+                    final_radius = 1
+                    current_color = self.asteroid_color_small
+                elif asteroid.radius <= 90:    # Planety (150px / 2 = 75)
+                    final_radius = 2
+                    current_color = self.asteroid_color_med
+                else:                         # Giga Asteroidy / Space (250px / 2 = 125)
+                    final_radius = 3
+                    current_color = self.asteroid_color_big
+                
+                # Rysowanie kółka na temp_radar
+                pygame.draw.circle(
+                    temp_radar, 
+                    current_color, 
+                    (int(radar_pos.x), int(radar_pos.y)), 
+                    final_radius
+                )
         # --- WROGOWIE ---
         # --- WROGOWIE ---
         target_id = getattr(battle, 'enemy_selected', None) # Pobieramy ID celu
