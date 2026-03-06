@@ -37,7 +37,7 @@
         },
         "enemy-data": [{"type": "scout", "prawdopodobienstwo": 30}, {"type": "fighter", "prawdopodobienstwo": 50}, {"type": "bomber", "prawdopodobienstwo": 20}],
         "rewards": {
-            "reward_1": {"add_thrust_power": 0.1, "text": "+ {var} do siły ciągu"},
+            "reward_1": {"add_thrust_power": 0.4, "text": "+ {var} do siły ciągu"},
             "reward_2": {"add_hp_reg_speed": 4, "text": "+ {var} do regeneracji HP"}
         }
     },
@@ -53,7 +53,7 @@
         "enemy-data": [{"type": "scout", "prawdopodobienstwo": 15}, {"type": "fighter", "prawdopodobienstwo": 60}, {"type": "bomber", "prawdopodobienstwo": 25}],
         "rewards": {
             "reward_1": {"add_shield_max_timer": 2, "text": "+ {var}s czasu trwania tarczy"},
-            "reward_2": {"add_max_shield_cooldown": 1, "text": "Szybsze odnawianie tarczy (+{var})"}
+            "reward_2": {"reduce_max_shield_cooldown": 0.5, "text": "Szybsze odnawianie tarczy (+{var})"}
         }
     },
     "level_5": {
@@ -83,7 +83,7 @@
         "enemy-data": [{"type": "scout", "prawdopodobienstwo": 5}, {"type": "fighter", "prawdopodobienstwo": 40}, {"type": "bomber", "prawdopodobienstwo": 55}],
         "rewards": {
             "reward_1": {"add_max_hp": 20, "text": "+ {var} do maksymalnego życia"},
-            "reward_2": {"reduce_linear_friction": 0.02, "text": "Zmniejszenie tarcia o {var} (lepszy dryf)"}
+            "reward_2": {"add_idle_friction": 0.005, "text": "Zmniejszenie tarcia o {var} (lepszy dryf)"}
         }
     },
     "level_7": {

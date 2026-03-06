@@ -581,7 +581,7 @@ class UI:
             "add_weapons_2_time_alive": self.space_ship_parameters.add_weapons_2_time_alive,
             "add_weapons_2_steer_limit": self.space_ship_parameters.add_weapons_2_steer_limit,
             "reduce_max_switch_time": self.space_ship_parameters.reduce_max_switch_time,
-            "add_max_shield_cooldown": self.space_ship_parameters.add_max_shield_cooldown,
+            "reduce_max_shield_cooldown": self.space_ship_parameters.reduce_max_shield_cooldown,
             "add_shield_max_timer": self.space_ship_parameters.add_shield_max_timer,
             "reduce_linear_friction": self.space_ship_parameters.reduce_linear_friction,
             "add_braking_force": self.space_ship_parameters.add_braking_force,
@@ -590,7 +590,8 @@ class UI:
             "add_max_hp": self.space_ship_parameters.add_max_hp,
             "add_max_speed": self.space_ship_parameters.add_max_speed,
             "add_boost_speed": self.space_ship_parameters.add_boost_speed,
-            "add_thrust_power": self.space_ship_parameters.add_thrust_power            
+            "add_thrust_power": self.space_ship_parameters.add_thrust_power,
+            "add_idle_friction": self.space_ship_parameters.add_idle_friction          
         }
         for k, v in data.items():
             if k in m_map:

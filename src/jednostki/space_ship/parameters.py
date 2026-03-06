@@ -13,6 +13,7 @@ class Parameters:
         self.thrust_power = 0.4
         self.braking_force = 0.92
         self.linear_friction = 0.985
+        self.idle_friction = 0.985
 
         self.max_switch_time = 2.5 # czas przełączenia między laserami a rakietami
         
@@ -28,6 +29,10 @@ class Parameters:
         self.weapons = []
         self.weapons_2 = []
         self._load_weapons_from_config("./data/player_slownik.json", ship_frames) #
+
+    def add_idle_friction(self, amount: float | int) -> None:
+        # Pamiętaj, że "zmniejszenie tarcia" to zbliżanie się do 1.0
+        self.idle_friction += amount
         
     def add_weapons_1_speed(self, speed: float | int) -> None:
         for i in range(len(self.weapons)):
@@ -71,7 +76,7 @@ class Parameters:
     def reduce_max_switch_time(self, max_switch_time: float | int) -> None:
         self.max_switch_time -= max_switch_time
         
-    def add_max_shield_cooldown(self, max_shield_cooldown: float | int) -> None:
+    def reduce_max_shield_cooldown(self, max_shield_cooldown: float | int) -> None:
         self.max_shield_cooldown += max_shield_cooldown
         
     def add_shield_max_timer(self, shield_max_timer: float | int) -> None:

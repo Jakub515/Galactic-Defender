@@ -116,6 +116,10 @@ class SpaceShip():
     @property
     def linear_friction(self):
         return self.parameters.linear_friction
+    
+    @property
+    def idle_friction(self):
+        return self.parameters.idle_friction
         
     @property
     def braking_force(self):
@@ -217,11 +221,27 @@ class SpaceShip():
             if self.velocity.length() > 1:
                 self.velocity = self.velocity.lerp(self.forward_dir * self.velocity.length(), self.drift_control)
         
-        if self.is_braking: self.velocity *= self.braking_force
-        
+        if self.is_braking:
+            self.velocity *= self.braking_force
+                
+            # NOWA LOGIKA TARCZA:
         max_v = self.boost_speed if can_boost else self.max_speed
-        self.velocity *= (self.speed_decay if self.velocity.length() > max_v else self.linear_friction)
+        
+        if self.velocity.length() > max_v:
+            # Stan 1: Zwalnianie po przekroczeniu limitu (np. po booście)
+            self.velocity *= self.speed_decay
+        elif self.is_thrusting:
+            # Stan 2: Normalne tarcie podczas lotu
+            self.velocity *= self.linear_friction
+        else:
+            # Stan 3: Tarcie, gdy silniki są wyłączone (dryfowanie)
+            self.velocity *= self.idle_friction
+
         self.player_pos += self.velocity
+        
+        #max_v = self.boost_speed if can_boost else self.max_speed
+        #self.velocity *= (self.speed_decay if self.velocity.length() > max_v else self.linear_friction)
+        #self.player_pos += self.velocity
 
         # System Smugi
         fire_offset = pygame.math.Vector2(-35, 0).rotate(-self.angle)
